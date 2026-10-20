@@ -1,0 +1,159 @@
+name: GYM upstream sync
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      verify:
+        description: 'Run compatibility checks even when upstream has not changed'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/upstream-sync.yml'
+      - 'scripts/upstream-sync*'
+      - 'frontend/scripts/check-local-upgrade.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gym-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'IF911/GYM'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      state: ${{ steps.prepare.outputs.state }}
+      base: ${{ steps.prepare.outputs.base }}
+      candidate: ${{ steps.prepare.outputs.candidate }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: node --test scripts/upstream-sync.test.mjs
+      - id: prepare
+        env:
+          SYNC_VERIFY: ${{ github.event_name == 'push' || inputs.verify == true }}
+        run: node scripts/upstream-sync.mjs prepare "$RUNNER_TEMP/gym-sync"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: gym-sync-candidate
+          path: ${{ runner.temp }}/gym-sync/
+          retention-days: 7
+          if-no-files-found: warn
+
+  validate:
+    needs: prepare
+    if: needs.prepare.outputs.state == 'update' || needs.prepare.outputs.state == 'verify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: gym-sync-candidate
+          path: ${{ runner.temp }}/gym-sync
+      - name: Build previous version and keep the trusted browser check
+        run: |
+          cp frontend/scripts/check-local-upgrade.mjs "$RUNNER_TEMP/check-local-upgrade.mjs"
+          cd frontend
+          npm ci
+          npm run build:local
+          mv dist "$RUNNER_TEMP/gym-previous"
+      - name: Load exact candidate
+        if: needs.prepare.outputs.state == 'update'
+        env:
+          CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+        run: |
+          git fetch --no-tags "$RUNNER_TEMP/gym-sync/candidate.bundle" HEAD
+          test "$(git rev-parse FETCH_HEAD)" = "$CANDIDATE"
+          git checkout --detach "$CANDIDATE"
+      - name: Validate candidate
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --config vite.config.js
+          node scripts/check-locales.mjs
+          npm run test:fatigue-probe
+          npm run build:local
+          ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify existing diary, media, backup and offline upgrade
+        run: |
+          cp "$RUNNER_TEMP/check-local-upgrade.mjs" frontend/scripts/check-local-upgrade.mjs
+          node frontend/scripts/check-local-upgrade.mjs "$RUNNER_TEMP/gym-previous" frontend/dist
+
+  promote:
+    needs: [prepare, validate]
+    if: needs.prepare.outputs.state == 'update' && needs.validate.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      # This checkout stays on trusted base. Never npm-install or execute candidate code here.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.base }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: gym-sync-candidate
+          path: ${{ runner.temp }}/gym-sync
+      - name: Fast-forward main and explicitly start the Pages release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/upstream-sync.mjs promote "$RUNNER_TEMP/gym-sync"
+
+  report:
+    needs: [prepare, validate, promote]
+    if: >-
+      always() && !cancelled() &&
+      (needs.prepare.outputs.state == 'blocked' || needs.prepare.result == 'failure' ||
+       needs.validate.result == 'failure' || needs.promote.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: gym-sync-candidate
+          path: ${{ runner.temp }}/gym-sync
+      - name: Create or update one GitHub issue for the blockage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_FAILED_STAGE: ${{ needs.prepare.result == 'failure' && 'Preparation failed' || needs.validate.result == 'failure' && 'Compatibility checks failed' || needs.promote.result == 'failure' && 'Push or release dispatch failed' || '' }}
+        run: node scripts/upstream-sync.mjs report "$RUNNER_TEMP/gym-sync"
+      - run: exit 1
