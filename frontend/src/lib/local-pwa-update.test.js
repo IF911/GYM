@@ -115,6 +115,21 @@ describe('local PWA updater', () => {
     expect(updater.getSnapshot()).toEqual({ checking: false, available: true, error: 'offline' })
   })
 
+  it('reports a disconnected phone without a network check and recovers when online', async () => {
+    const b = browser({ entry: 'https://gym.example/GYM/assets/index-old.js' })
+    const updater = createLocalPwaUpdater(b)
+    await updater.start()
+    const calls = b.registration.update.mock.calls.length
+    b.navigator.onLine = false
+    await updater.check({ manual: true })
+    expect(updater.getSnapshot().error).toBe('offline')
+    expect(b.registration.update).toHaveBeenCalledTimes(calls)
+    b.navigator.onLine = true
+    await updater.check({ manual: true })
+    expect(updater.getSnapshot()).toEqual({ checking: false, available: false, error: null })
+    expect(b.registration.update).toHaveBeenCalledTimes(calls + 1)
+  })
+
   it('queues the lifecycle query when controllerchange races an active check', async () => {
     const b = browser()
     const updater = createLocalPwaUpdater(b)
@@ -122,6 +137,7 @@ describe('local PWA updater', () => {
     let resolveUpdate
     b.registration.update.mockImplementationOnce(() => new Promise(resolve => { resolveUpdate = resolve }))
     const pending = updater.check({ manual: true })
+    await Promise.resolve()
     b.navigator.serviceWorker.emit('controllerchange')
     resolveUpdate()
     await pending

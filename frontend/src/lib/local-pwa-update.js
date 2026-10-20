@@ -135,13 +135,16 @@ export function createLocalPwaUpdater(deps = {}) {
     if (currentCheck) return currentCheck
     if (!manual) lastAutoCheck = now()
     publish({ checking: true, error: null })
-    currentCheck = (async () => {
+    // Defer the body until currentCheck is assigned: even an immediate offline failure
+    // must clear it in finally so the next online check can actually retry.
+    currentCheck = Promise.resolve().then(async () => {
       try {
         if (!registration) {
           publish({ checking: false, error: 'unsupported' })
           return snapshot
         }
         if (update) {
+          if (nav?.onLine === false) throw new TypeError('offline')
           await registration.update()
           if (manual) await waitForInstallation(registration.installing)
         }
@@ -157,7 +160,7 @@ export function createLocalPwaUpdater(deps = {}) {
         }
       }
       return snapshot
-    })()
+    })
     return currentCheck
   }
 

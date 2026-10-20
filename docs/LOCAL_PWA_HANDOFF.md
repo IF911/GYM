@@ -28,7 +28,7 @@ navigation. Нет автоматического reload/navigate, чтения 
 | Legacy restart, future CSS-only update через UI, активная тренировка и незаконченный ввод | `check-local-upgrade.mjs` |
 | История, программы, вес, custom exercise, IndexedDB и backup после обновления | тот же browser smoke |
 
-Пройдены 414 frontend test files / 5125 tests, 11 sync tests, parity 18 locales / 2258 keys,
+Пройдены 414 frontend test files / 5126 tests, 11 sync tests, parity 18 locales / 2258 keys,
 108000 fatigue и 1800 history comparisons. Build local успешен (6554 stills / 6554 animations).
 Оба upgrade сценария прошли в mobile viewport 390×844: одна сохранённая и одна активная тренировка,
 3 программы, вес, custom exercise и 8 bytes IndexedDB media сохранены; JSON export и offline restore
@@ -38,7 +38,15 @@ worker и нажатием баннера; synthetic CSS release не публи
 дневник и overrides. Во всех сценариях 0 внешних/API/write requests и page errors.
 Проверка physical iPhone/Safari остаётся за владельцем: доступ к телефону отсутствует.
 
-Delivery этого дополнения: подготовлено к push и штатному Pages workflow; до live-проверки
+Первый выпуск опубликован из `8b6e8a0d62bab2f8c015e5d59264dc6f385818f9`;
+Pages [39483545538](https://github.com/IF911/GYM/actions/runs/39483545538) завершился success.
+Live tools/import smoke и публичный архив (7562 файла) проверены: текущий JS/SW совпадают,
+личного плана, ссылки и кода в архиве нет. Дополнительный live check выявил неверный статус
+ручной проверки в offline режиме. Исправление явно учитывает `navigator.onLine`, сохраняет
+готовое обновление при ошибке и допускает повтор после восстановления сети. Новый регрессионный
+тест и local mobile check ручной проверки/offline прошли; повторный upgrade через баннер сохранил
+активную тренировку, дневник, media и незаконченный ввод, backup восстановлен офлайн.
+Финальное offline-дополнение подготовлено к push/Pages; до повторной live-проверки его
 публикация не считается завершённой. Откат — revert функционального commit и обычный Pages release.
 Формат данных/backup не менялся; дневник не откатывается. Личные материалы остались вне Git,
 новых credentials нет, признаков компрометации нет, ротация не требуется.

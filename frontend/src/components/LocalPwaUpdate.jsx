@@ -45,7 +45,8 @@ export function LocalPwaUpdateRow() {
         : checked ? (ru ? 'Установлена актуальная версия.' : 'The app is up to date.')
           : (ru ? 'Тренировки и программы останутся на телефоне.' : 'Your workouts and plans stay on this phone.')
   return <Row icon="download" iconTint="var(--green)"
-    title={available ? (ru ? 'Обновить GYM' : 'Update GYM') : (ru ? 'Проверить обновление GYM' : 'Check for GYM updates')}
+    title={checking ? (ru ? 'Проверяю обновление GYM…' : 'Checking for GYM updates…')
+      : available ? (ru ? 'Обновить GYM' : 'Update GYM') : (ru ? 'Проверить обновление GYM' : 'Check for GYM updates')}
     subtitle={subtitle} accessory="chevron"
     onClick={async () => {
       if (checking) return
