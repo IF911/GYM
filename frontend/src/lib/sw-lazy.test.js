@@ -55,7 +55,7 @@ describe('the worker keeps the on-demand code too', () => {
     expect(asked).toEqual(['index.html', './assets/index-new.js'])
   })
 
-  it('the build lists code and styles, not the language packs (but the English steps)', () => {
+  it('keeps Russian interface, exercise names and technique available before an offline language switch', () => {
     const chunk = (...moduleIds) => ({ type: 'chunk', moduleIds })
     const bundle = {
       'assets/index-a.js': chunk('/app/frontend/src/main.jsx'),
@@ -63,6 +63,8 @@ describe('the worker keeps the on-demand code too', () => {
       'assets/de-c.js': chunk('/app/frontend/src/locales/de.js'),
       'assets/de-d.js': chunk('/app/frontend/src/instr/de.js'),
       'assets/ru-e.js': chunk('/app/frontend/src/exercise-names/ru.js'),
+      'assets/ru-j.js': chunk('/app/frontend/src/locales/ru.js'),
+      'assets/ru-k.js': chunk('C:\\app\\frontend\\src\\instr\\ru.js'),
       'assets/index-f.css': { type: 'asset' },
       'icon-512.png': { type: 'asset' },
       // the English steps and descriptions every language falls back to: offline as well
@@ -70,7 +72,7 @@ describe('the worker keeps the on-demand code too', () => {
       'assets/en-h.js': chunk('/app/frontend/src/exercise-desc/en.js'),
       'assets/de-i.js': chunk('/app/frontend/src/exercise-desc/de.js'),
     }
-    expect(lazyAssets(bundle)).toEqual(['./assets/de-i.js', './assets/en-g.js', './assets/en-h.js', './assets/index-a.js', './assets/index-f.css', './assets/media-ingest-b.js'])
+    expect(lazyAssets(bundle)).toEqual(['./assets/de-i.js', './assets/en-g.js', './assets/en-h.js', './assets/index-a.js', './assets/index-f.css', './assets/media-ingest-b.js', './assets/ru-e.js', './assets/ru-j.js', './assets/ru-k.js'])
   })
 
   it('the build stamps the worker with both', () => {

@@ -7,11 +7,10 @@
 // and offline it was simply missing until the page had needed it once with a network: the first
 // photo after an update, added at the gym, failed.
 const PACK = /[\\/]src[\\/](?:locales|instr|exercise-names)[\\/]/
-// …except the English steps: every language falls back to them, they are no longer in the main
-// bundle (i18n.js loads them on the first exercise opened), and left out, a phone that had not
-// opened one with a network showed no steps at all offline. exercise-desc/ is not a PACK and
-// stays in the list, English descriptions included.
-const KEEP = /[\\/]src[\\/]instr[\\/]en\.js$/
+// English steps are every language's fallback. GYM also keeps the Russian interface, names
+// and technique at install, so choosing Russian at the gym does not require another connection.
+// exercise-desc/ is not a PACK and stays in the list, English descriptions included.
+const KEEP = /[\\/]src[\\/](?:instr[\\/]en|(?:locales|instr|exercise-names)[\\/]ru)\.js$/
 
 /** The built files the worker fetches at install besides what index.html names: every chunk and
  *  stylesheet but the packs, as './assets/…' the way index.html writes them. */

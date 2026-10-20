@@ -72,6 +72,20 @@ Languages: `ar bn de es fr hi hu it ko pl pt pt-BR ru th tr uk zh zh-TW` (the ap
 Names follow the language's own conventions. German capitalises nouns; the others are stored
 lowercase like English.
 
+### Russian text in the GYM fork
+
+GYM keeps names, descriptions and instructions for every canonical exercise in `i18n/ru.json`.
+Drawing aliases (`variantOf`) inherit the canonical text; they are not separate movements.
+Use plain Russian with an explicit setup, direction and return. Preserve equipment, grip,
+assistance, added load, side, angles and hold durations. Tensing the trunk does not mean
+holding the breath. Record and review contradictions in the English source rather than
+silently combining incompatible movements. Do not use the licensed media as AI input.
+
+Regenerate the packs with `node scripts/catalogue/build.mjs`. The frontend check
+`src/lib/ru-catalogue.test.js` prevents new untranslated canonical exercises from silently
+falling back to English in this fork. Personal training plans and health information belong
+outside the public repository; the catalogue contains general movement descriptions only.
+
 ## Rules that keep this open
 
 1. **Write it yourself.** Don't copy names, descriptions or steps from other apps, websites, books
