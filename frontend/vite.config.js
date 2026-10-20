@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react'
 import { lazyAssets, stampSw } from './scripts/sw-stamp.mjs'
 
 const backend = process.env.API_TARGET || 'http://127.0.0.1:3000'
+const localBuild = process.env.VITE_LOCAL === '1'
 // The API refuses a state-changing request that a browser sent from anywhere other than its own
 // ORIGIN (the CSRF guard in api/server.js). The dev server is on a different port, so the page's
 // real Origin is not ORIGIN — modern browsers get through on Sec-Fetch-Site: same-origin, and
@@ -15,7 +16,7 @@ const backend = process.env.API_TARGET || 'http://127.0.0.1:3000'
 const apiOrigin = process.env.API_ORIGIN || 'http://localhost:8080'
 // Exercise media: served straight from catalogue/media in dev (see catalogueMedia below), or
 // proxied to a server of your choice with MEDIA_TARGET.
-const media = process.env.MEDIA_TARGET
+const media = localBuild ? undefined : process.env.MEDIA_TARGET
 const catalogueMedia = {
   name: 'opengym-catalogue-media',
   configureServer(server) {
@@ -38,8 +39,8 @@ const catalogueMedia = {
 // Optional web analytics (Umami). Injected only when BOTH vars are set at build time,
 // so a plain `npm run build` — and every self-hosted install — stays telemetry-free.
 // Set for the public instance: VITE_UMAMI_SRC=https://stats.example/script.js VITE_UMAMI_ID=<uuid>
-const umamiSrc = process.env.VITE_UMAMI_SRC
-const umamiId = process.env.VITE_UMAMI_ID
+const umamiSrc = localBuild ? undefined : process.env.VITE_UMAMI_SRC
+const umamiId = localBuild ? undefined : process.env.VITE_UMAMI_ID
 
 const umami = {
   name: 'opengym-umami',
@@ -69,10 +70,17 @@ const swStamp = {
   configResolved(config) { outDir = resolve(config.root, config.build.outDir) },
   generateBundle(_, bundle) { lazy = lazyAssets(bundle) },
   closeBundle() {
-    const html = join(outDir, 'index.html'), sw = join(outDir, 'sw.js')
-    if (!existsSync(html) || !existsSync(sw)) return
+    const html = join(outDir, 'index.html')
+    const source = join(outDir, localBuild ? 'sw-local.js' : 'sw.js')
+    const sw = join(outDir, 'sw.js')
+    if (!existsSync(html) || !existsSync(source)) return
     const stamp = createHash('sha256').update(readFileSync(html)).digest('hex').slice(0, 10)
-    writeFileSync(sw, stampSw(readFileSync(sw, 'utf8'), { stamp, lazy }))
+    if (localBuild) {
+      writeFileSync(sw, stampSw(readFileSync(source, 'utf8'), { stamp, lazy }))
+      unlinkSync(source)
+    } else {
+      writeFileSync(sw, stampSw(readFileSync(sw, 'utf8'), { stamp, lazy }))
+    }
   }
 }
 

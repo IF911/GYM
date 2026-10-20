@@ -1,7 +1,8 @@
 {
-  "name": "openGym",
-  "short_name": "openGym",
-  "description": "Personal gym & body weight tracker",
+  "name": "GYM",
+  "short_name": "GYM",
+  "description": "Личный дневник тренировок",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

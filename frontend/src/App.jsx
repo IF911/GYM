@@ -17,6 +17,7 @@ import { installViewportGuard } from './lib/viewport-guard.js'
 import { installChipDrag } from './lib/hchips.js'
 import { syncPushSubscription } from './lib/push.js'
 import { MOBILE } from './lib/mobile.js'
+import { LOCAL } from './lib/local.js'
 import { exitWorkoutEdit, startFlow } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -130,7 +131,7 @@ function Shell() {
   // lib/push.js): a subscription the instance lost is back before the next reminder is due,
   // with nobody having to visit Settings. Web only — the APK has no service worker.
   useEffect(() => {
-    if (MOBILE || !user || !ready) return
+    if (LOCAL || MOBILE || !user || !ready) return
     syncPushSubscription().catch(() => {})
   }, [user?.id, ready])
   // Opened from a device-link QR code (#95): once boot knows who is here, the sheet that redeems
@@ -139,7 +140,7 @@ function Shell() {
   const linkCode = useStore(s => s.linkCode)
   const linkOffered = useRef(false)
   useEffect(() => {
-    if (!ready || !linkCode || linkOffered.current) return
+    if (LOCAL || !ready || !linkCode || linkOffered.current) return
     linkOffered.current = true
     openDeviceLinkRedeem()
   }, [ready, linkCode])
@@ -223,10 +224,10 @@ function Shell() {
               {/* The Coach screens gate themselves on the instance config; the routes exist
                   unconditionally so a deep link from a notification lands somewhere sane
                   rather than on the catch-all. */}
-              <Route path="/coach" element={<CoachChat />} />
-              <Route path="/coach/intake" element={<CoachIntake />} />
-              <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
-              <Route path="/coach/setup" element={<CoachSetup />} />
+              {!LOCAL && <Route path="/coach" element={<CoachChat />} />}
+              {!LOCAL && <Route path="/coach/intake" element={<CoachIntake />} />}
+              {!LOCAL && <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />}
+              {!LOCAL && <Route path="/coach/setup" element={<CoachSetup />} />}
               <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>

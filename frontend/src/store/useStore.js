@@ -4,6 +4,7 @@ import { localTZ } from '../lib/format.js'
 import { t } from '../lib/i18n.js'
 import { registerCustom, healCustomEx } from '../lib/exercises.js'
 import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
+import { LOCAL, LOCAL_CONFIG } from '../lib/local.js'
 import { rememberDefaultLang } from '../lib/default-lang.js'
 import { guestAllowed } from '../lib/guest.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, onAppActive, readJsonFile, syncReminder, writeAutoBackup, writeJsonFile } from '../lib/mobile.js'
@@ -793,6 +794,7 @@ export const useStore = create((set, get) => {
   // there passes the same check. The owner key goes first on both a sign-in and a sign-out, so
   // this runs before the new owner's copy reaches this tab.
   window.addEventListener('storage', e => {
+    if (LOCAL) return
     if (e.key !== 'gym_owner') return
     const owner = readOwner()
     if (owner === seenOwner) return
@@ -823,6 +825,7 @@ export const useStore = create((set, get) => {
   // revision really moved. A hidden tab does the same when it is shown again. Its own base still
   // guards the push either way: a copy this tab has not refreshed gets a 409 and a merge.
   window.addEventListener('storage', e => {
+    if (LOCAL) return
     if (e.key !== SYNC_KEY || !e.newValue) return
     if (!get().user && !followSignIn()) return
     const user = get().user
@@ -861,6 +864,7 @@ export const useStore = create((set, get) => {
   // this tab is signed in too, as a tab opened now would be. The session cookie is the browser's.
   // A guest's workout carried into the account shows here again.
   const followSignIn = () => {
+    if (LOCAL) return false
     if (get()?.user || handedOver) return false
     const owner = readOwner()
     if (!owner || owner !== seenOwner || readWidOwner() !== owner || readWid() !== seenWid) return false
@@ -1291,7 +1295,7 @@ export const useStore = create((set, get) => {
   // check has to ask (lib/media-owed.js). A copy without any leaves the media store unopened.
   if (referencedHashes(S0).size) loadPending()
   meta.set(S0, { base: readStoredSync(), owed: storedOwed() })
-  const user0 = (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })()
+  const user0 = LOCAL ? null : (() => { try { return JSON.parse(localStorage.getItem('gym_user')) || null } catch { return null } })()
   adoptHold = !!user0 && readAdopt()?.uid === user0.id
   const sync0 = { offline: false, pending: storedOwed(), auth: false, lastError: null, lastSynced: (() => { try { return +localStorage.getItem(SYNCED_AT_KEY) || 0 } catch { return 0 } })(), server: serverBase(), held: adoptHold }
   sync0.status = statusOf(sync0, user0)
@@ -1474,9 +1478,10 @@ export const useStore = create((set, get) => {
       if (MOBILE && S.autoBackup) writeAutoBackup(S)
     },
 
-    isGuest: () => localStorage.getItem('gym_guest') === '1',
+    isGuest: () => LOCAL || localStorage.getItem('gym_guest') === '1',
     // Choosing to go on without a server ends whatever was said about the last one.
     setGuest(v) {
+      if (LOCAL) v = true
       if (v) localStorage.setItem('gym_guest', '1'); else localStorage.removeItem('gym_guest')
       set({})
       if (v) setSync({ auth: false, offline: false, lastError: null })
@@ -1487,6 +1492,7 @@ export const useStore = create((set, get) => {
     // rather than by each screen that happens to need it.
     config: null,
     async loadConfig() {
+      if (LOCAL) return LOCAL_CONFIG
       if (get().config) return get().config
       return get().refreshConfig()
     },
@@ -1495,6 +1501,7 @@ export const useStore = create((set, get) => {
     // Two callers that ask at once get one request: signing in re-asks (setUser) and the pairing
     // flow awaits a refresh of its own immediately after, and there is one answer to have.
     async refreshConfig() {
+      if (LOCAL) { set({ config: LOCAL_CONFIG }); return LOCAL_CONFIG }
       if (configFetch) return configFetch
       configFetch = (async () => {
         try { const c = await api('/api/config'); rememberDefaultLang(c); set({ config: c }); return c }
@@ -1507,6 +1514,7 @@ export const useStore = create((set, get) => {
     // `adopt` (a sign-in, a pairing — { alwaysAsk } for a device link): adoptProfile follows and
     // decides what becomes of this copy; until it has, nothing is pulled or pushed (ADOPT_KEY).
     setUser(u, { adopt } = {}) {
+      if (LOCAL) return
       if (u) {
         // The local copy belongs to whoever last signed in here. When a session expires or is
         // revoked elsewhere, boot() only drops the user and the data stays; a different profile
@@ -1835,6 +1843,12 @@ export const useStore = create((set, get) => {
 
     // Boot: ask the server who we are, then pull.
     async boot() {
+      if (LOCAL) {
+        get().setGuest(true)
+        set({ user: null, config: LOCAL_CONFIG, linkCode: null })
+        finishBoot()
+        return
+      }
       // Mobile build: no backend by default — restore from the file mirror (the durable copy;
       // localStorage may have been evicted since the last run) and go straight in. Unless this
       // device was paired to a server ("connect to my server" mode, lib/remote.js), in which

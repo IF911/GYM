@@ -1,6 +1,7 @@
 // Backend + WebAuthn helpers (ported from the vanilla app).
 import { t } from './i18n-core.js'
 import { MOBILE } from './mobile.js'
+import { LOCAL } from './local.js'
 import { appBase } from './app-base.js'
 import { nativeFetch } from './capacitor-fetch.js'
 
@@ -17,7 +18,7 @@ export const vault = () => (IS_APPLE ? t('iCloud Keychain') : IS_ANDROID ? t('Go
 // navigator.credentials: some browsers expose WebAuthn while that generic Credential Management
 // API check produces a false negative (notably Chrome on iOS). The real create/get calls still run
 // only after the user chooses a passkey action and surface any genuine browser error there.
-export const webauthnOK = () => typeof window.PublicKeyCredential !== 'undefined'
+export const webauthnOK = () => !LOCAL && typeof window.PublicKeyCredential !== 'undefined'
 
 // The paired mobile app (lib/remote.js) is the only caller of these — everywhere else stays on
 // same-origin cookies, so remoteBase/remoteToken stay empty and api() behaves exactly as before.
@@ -48,6 +49,7 @@ const TIMEOUT_MS = 60000
 const failure = (message, code, status) => Object.assign(new Error(message), { code, status })
 
 export async function api(path, opts) {
+  if (LOCAL) throw failure('This build stores data only on this device.', 'local-only', 0)
   const { timeout, ...init } = opts || {}
   // A phone with no server to talk to: local mode, or a pairing that is gone. There is no
   // relative URL to fall back on here — the WebView's own origin is Capacitor's local asset
@@ -101,7 +103,7 @@ async function exchange(url, init) {
 // origin is Capacitor's asset server, which answers every path with index.html: the phones sent
 // every "left" to https://localhost/api/activity. The api() call beside it reaches the server.
 export function beacon(path, body) {
-  if (MOBILE) return false
+  if (LOCAL || MOBILE) return false
   try {
     if (typeof navigator === 'undefined' || typeof navigator.sendBeacon !== 'function') return false
     return !!navigator.sendBeacon(appBase().replace(/\/$/, '') + path, new Blob([JSON.stringify(body)], { type: 'application/json' }))
@@ -127,6 +129,7 @@ const timedOut = () => failure(t('The server did not answer in time.'), 'timeout
  * Errors carry { status, code } like api()'s: the server's code on a refusal (media-missing).
  */
 export async function apiBlob(path, { expectSize, idleMs = 30000, fetchImpl = globalThis.fetch } = {}) {
+  if (LOCAL) throw failure('This build stores data only on this device.', 'local-only', 0)
   if (MOBILE && !remoteBase) throw notPaired()
   const max = typeof expectSize === 'number' && expectSize >= 0 ? expectSize + 1024 : Infinity
   const ctl = typeof AbortController === 'function' ? new AbortController() : null
@@ -183,6 +186,7 @@ export async function apiBlob(path, { expectSize, idleMs = 30000, fetchImpl = gl
  * `idleMs` without progress; no status at all when the network failed.
  */
 export function apiUpload(path, blob, mime, { onProgress, idleMs = 60000, XHR = globalThis.XMLHttpRequest } = {}) {
+  if (LOCAL) return Promise.reject(failure('This build stores data only on this device.', 'local-only', 0))
   if (MOBILE && !remoteBase) return Promise.reject(notPaired())
   return new Promise((resolve, reject) => {
     const xhr = new XHR()
@@ -312,6 +316,7 @@ export function looksLocal(hostname) {
 // Access token goes along when it was entered for that server: without it Access never lets
 // the code through, and to any other server it would be handed to a stranger.
 export async function pairRedeem(serverBase, code, { probeMs = PROBE_MS } = {}) {
+  if (LOCAL) throw failure('This build stores data only on this device.', 'local-only', 0)
   let data
   try {
     data = await request(serverBase + '/api/pair/redeem', {
