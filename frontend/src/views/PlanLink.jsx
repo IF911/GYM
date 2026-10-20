@@ -10,24 +10,26 @@ import { Button, TextArea, TextField } from '../components/ui.jsx'
 // This local-only addition has Russian and English copy; the upstream locale packs stay intact.
 const copy = {
   ru: {
-    title: 'Добавить программу по ссылке', link: 'Личная ссылка', code: 'Код доступа',
-    hint: 'Вставь ссылку и введи отдельный код. Программа расшифровывается на этом устройстве. На GitHub она не загружается.',
+    title: 'Добавить программу по ссылке', link: 'Ссылка на программу', code: 'Код доступа',
+    hint: 'Скопируй ссылку из сообщения и вставь её ниже. Затем введи код доступа из того же сообщения.',
+    placeholder: 'Вставь сюда ссылку на программу', paste: 'На iPhone: зажми поле и выбери «Вставить».',
     iphone: 'Если GYM установлен на главный экран, вставляй ссылку здесь, открыв GYM с его иконки. В Safari может быть отдельный дневник.',
     ready: 'Зашифрованная программа получена. Введи код доступа.',
     preview: 'Посмотреть программу', busy: 'Открываем…', cancel: 'Отмена',
     invalid: 'Не удалось открыть программу. Проверь ссылку и код доступа.',
     unsupported: 'Обнови iOS/Safari: браузер не поддерживает защищённые ссылки. Импорт файла плана остаётся доступен.',
-    private: 'Ссылка вместе с кодом даёт доступ к программе. Не пересылай их посторонним. История тренировок в ссылку не входит.',
+    private: 'Программа открывается и сохраняется на этом устройстве. На GitHub она не загружается. Ссылка вместе с кодом даёт к ней доступ — не пересылай их посторонним. История тренировок в ссылку не входит.',
   },
   en: {
-    title: 'Add a plan by private link', link: 'Private link', code: 'Access code',
-    hint: 'Paste the link and enter its separate code. The plan is decrypted on this device. It is never uploaded to GitHub.',
+    title: 'Add a plan by private link', link: 'Plan link', code: 'Access code',
+    hint: 'Copy the link from the message and paste it below. Then enter the access code from that message.',
+    placeholder: 'Paste the plan link here', paste: 'On iPhone: touch and hold the field, then choose Paste.',
     iphone: 'If GYM is on your home screen, open it from its icon and paste the link here. Safari may have a separate diary.',
     ready: 'Encrypted plan received. Enter its access code.',
     preview: 'Preview plan', busy: 'Opening…', cancel: 'Cancel',
     invalid: 'Could not open the plan. Check the link and access code.',
     unsupported: 'Update iOS/Safari: this browser does not support protected links. Plan file import is still available.',
-    private: 'The link and code together give access to the plan. Keep both private. Workout history is not included in plan links.',
+    private: 'The plan opens and is saved on this device. It is never uploaded to GitHub. The link and code together give access to it; keep both private. Workout history is not included in plan links.',
   },
 }
 
@@ -72,13 +74,15 @@ export default function PlanLink() {
     <p className="muted small">{text.hint}</p>
     <p className="small">{text.iphone}</p>
     <form onSubmit={preview}>
-      {incoming ? <p className="small">{text.ready}</p> : <label>
-        <span>{text.link}</span>
+      {incoming ? <p className="small">{text.ready}</p> : <div style={{ margin: '16px 0' }}>
+        <label htmlFor="plan-link-url">{text.link}</label>
         <TextArea value={link} onChange={e => setLink(e.target.value)} rows={3}
+          id="plan-link-url" placeholder={text.placeholder} aria-describedby="plan-link-paste-tip"
           maxLength={PLAN_LINK_LIMITS.maxPayloadLength + 4096} autoCapitalize="none"
           autoCorrect="off" spellCheck={false} required />
-      </label>}
-      <label><span>{text.code}</span>
+        <span id="plan-link-paste-tip" className="dim small">{text.paste}</span>
+      </div>}
+      <label style={{ display: 'block', margin: '16px 0' }}><span>{text.code}</span>
         <TextField type="password" autoComplete="off" autoCapitalize="none" spellCheck={false}
           value={password} onChange={e => setPassword(e.target.value)} maxLength={256} required />
       </label>

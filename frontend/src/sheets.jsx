@@ -6,7 +6,7 @@ import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile, profileEquipment
 import { fmtDate, fmtDateRange, fmtNum, fmtPlate, exerciseNameText, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, routineCount, setsWorkCount, DAYN, DAYS, weekOrder, weekStartOf, weekDayOffset, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, bestWeightForEntry, buildSets, effectiveRoutineIds, workoutDay, workoutVolume, setsDone, setsDoneActive, setUnitsTotal, lastBW, sessionSections, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, capEffort, stepEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { usesBar, defaultBarWeight, hasBarOverride, isNoBar } from './lib/bar.js'
-import { PLATE_SIZES, pairsOf, ownsPlates, withPlatePairs, withStandardPlates, withLoadKind, loadKindFor, baseWeightFor, dropGrid } from './lib/plates.js'
+import { PLATE_SIZES, pairsOf, ownsPlates, withPlatePairs, withStandardPlates, withLoadKind, loadKindOf, loadKindFor, baseWeightFor, dropGrid } from './lib/plates.js'
 import { toScale, rirOf, EFFORT_PRESETS, effortColor } from './lib/effort.js'
 import { beep, vibrate } from './lib/sound.js'
 import { t, tn, dateLocale, instrFor, instrTranslated, descFor, exerciseNameFor, exerciseNameClass, getLang, useLang } from './lib/i18n.js'
@@ -45,6 +45,7 @@ import { speedUnitOf, toSpeed, fromSpeed } from './lib/speed.js'
 import { buildCompletedWorkout, sessionEnd } from './lib/finish-workout.js'
 import { refillAfter } from './lib/rotation.js'
 import { isWarmupRow, hasCompletedWork } from './lib/workout-model.js'
+import { exerciseToolPolicy } from './lib/exercise-tools.js'
 import { saveSessionAsRoutine } from './lib/session-routines.js'
 import { repeatSessionEntries } from './lib/session-repeat.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
@@ -917,8 +918,8 @@ export const dumbbellInventorySheet = () => ui().openSheet(close => <DumbbellInv
 function OneRM({ ex }) {
   const st = useStore(s => s.S)
   const best = best1RM(st, ex.id)
-  const [w, setW] = useState(best ? best.w : (st.exWeights[ex.id] || {}).w || 20)
-  const [r, setR] = useState(best ? best.r : 5)
+  const [w, setW] = useState(best ? best.w : '')
+  const [r, setR] = useState(best ? best.r : '')
   const est = estimate1RM(w, r, formulaOf(st))
   return <>
     <h4 className="sec">{t('Estimated 1RM')}</h4>
@@ -1001,7 +1002,11 @@ function ExerciseDetail({ ex, close }) {
       <Button icon="pencil" style={{ flex: 1 }} onClick={() => { close(); customExSheet(ex) }}>{t('Edit')}</Button>
       <Button variant="danger" icon="trash" style={{ flex: 1 }} onClick={() => deleteCustomEx(ex, close)}>{t('Delete')}</Button>
     </div>}
-    {modeOf({ id: ex.id }) === 'reps' && <>
+    {exerciseToolPolicy(ex, {
+      mode: modeOf({ id: ex.id }),
+      loadKind: loadKindFor(st, { id: ex.id }),
+      loadKindExplicit: loadKindOf(st.loadKind?.[ex.id]) != null && loadKindOf(st.loadKind?.[ex.id]) !== 'none',
+    }).plates && <>
       <h4 className="sec">{t('Plate loading')}</h4>
       <BarWeightEditor ex={ex} extra={t('You still log the total weight. This only feeds the plate line under each set.')} />
     </>}
@@ -1015,7 +1020,11 @@ function ExerciseDetail({ ex, close }) {
     {/* No one-rep max on an assistance machine: the load is the help you were given, so the
         calculator would answer "your 1RM is 23 kg" about a number that gets smaller as you get
         stronger (issue #232). Cardio has none for the same kind of reason. */}
-    {!isCardio(ex) && !isAssisted(ex) && <OneRM ex={ex} />}
+    {exerciseToolPolicy(ex, {
+      mode: modeOf({ id: ex.id }),
+      loadKind: loadKindFor(st, { id: ex.id }),
+      loadKindExplicit: loadKindOf(st.loadKind?.[ex.id]) != null && loadKindOf(st.loadKind?.[ex.id]) !== 'none',
+    }).oneRM && <OneRM ex={ex} />}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{getLang() !== 'en' && !instrTranslated(ex) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
     {/* The catalogue is community-edited (catalogue/README.md): a wrong muscle, a clumsy step or a
         missing translation is one tap from an issue that already names the exercise. */}
@@ -1037,7 +1046,11 @@ function ExerciseHistory({ exId }) {
   const ex = exOr(exId)
   const h = useMemo(() => exerciseHistory(st, exId), [st.workouts, exId])
   const [curve, setCurve] = useState('top')
-  const onE1 = curve === 'e1rm' && h.e1rmPoints.length > 0
+  const historyPolicy = exerciseToolPolicy(ex, {
+    mode: 'reps', bodyweight: h.metric !== 'weight', hasMeaningfulLoad: h.metric === 'weight',
+  })
+  const canShowHistoryE1 = historyPolicy.oneRM && h.e1rmPoints.length > 0
+  const onE1 = curve === 'e1rm' && canShowHistoryE1
   const unit = h.metric === 'weight' ? st.unit : h.metric === 'reps' ? t('reps') : h.metric === 'sec' ? 's' : t('min')
   const e1Best = useMemo(() => Math.max(0, ...h.e1rmPoints.map(p => p.y)), [h])
   if (!h.total) return <>
@@ -1046,13 +1059,13 @@ function ExerciseHistory({ exId }) {
   </>
   const tail = s => [
     s.volume > 0 && t('Volume') + ' ' + fmtVol(s.volume, st.unit),
-    s.e1rm != null && t('Est. 1RM') + ' ' + fmtNum(s.e1rm) + ' ' + st.unit,
+    canShowHistoryE1 && s.e1rm != null && t('Est. 1RM') + ' ' + fmtNum(s.e1rm) + ' ' + st.unit,
   ].filter(Boolean).join(' · ')
   return <>
     <h3 className={exerciseNameClass(ex)} style={{ marginBottom: 2 }}>{exerciseNameFor(ex)}</h3>
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Exercise history')} · {tn('{0} session', '{0} sessions', h.total)}</div>
     {/* Only reps work with a load produces an estimate, so the toggle is absent for the rest. */}
-    {h.e1rmPoints.length > 0 && h.metric === 'weight' && <Segmented className="seg-range" value={curve} onChange={setCurve}
+    {canShowHistoryE1 && h.metric === 'weight' && <Segmented className="seg-range" value={curve} onChange={setCurve}
       options={[{ value: 'top', label: t('Top set') }, { value: 'e1rm', label: t('Est. 1RM') }]} />}
     <div className="chart" style={{ marginTop: 8 }}>
       <LineChart points={onE1 ? h.e1rmPoints : h.points} h={140} unit={onE1 ? st.unit : unit} color="var(--blue)" />
@@ -1672,6 +1685,7 @@ function ExConfig({ ex, existing, onSave, onDelete, onReplace, close, routine, i
   // Both climb a range: the flat Reps stepper gives way to "Reps from" / "Reps up to".
   const ranged = mode === 'reps' && climbsRange(activePolicy)
   const triple = mode === 'reps' && activePolicy === 'triple'
+  const leverPlateOptIn = ex.eq === 'leverage machine' && ex.cat === 'strength' && mode === 'reps'
   // Keep whatever the other mode already had (sets, weight) and fill only what is missing.
   const setMode = m => setC(x => {
     const next = { ...defaultConfig(ex.id, m), ...x, mode: m }
@@ -1997,10 +2011,24 @@ function ExConfig({ ex, existing, onSave, onDelete, onReplace, close, routine, i
     </>}
     {/* How the weight is plate-loaded and what the bar weighs — per exercise, not per plan, so
         it sits apart from the config fields above and writes straight to S.barWeights/S.loadKind. */}
-    {mode === 'reps' && <>
+    {exerciseToolPolicy(ex, {
+      mode,
+      bodyweight: bw,
+      loadKind: loadKindFor(st, { ...c, id: ex.id }),
+      hasMeaningfulLoad: Number(c.weight) > 0,
+      loadKindExplicit: loadKindOf(st.loadKind?.[ex.id]) != null && loadKindOf(st.loadKind?.[ex.id]) !== 'none',
+    }).plates && <>
       <h4 className="sec">{t('Plate loading')}</h4>
       <BarWeightEditor ex={ex} cfg={c} extra={t('Applies to this exercise everywhere, not just this plan.')} />
     </>}
+    {leverPlateOptIn && !exerciseToolPolicy(ex, {
+      mode, bodyweight: bw, loadKind: loadKindFor(st, { ...c, id: ex.id }),
+      loadKindExplicit: loadKindOf(st.loadKind?.[ex.id]) != null && loadKindOf(st.loadKind?.[ex.id]) !== 'none',
+    }).plates && <Button variant="ghost" onClick={() => update(s => {
+      s.loadKind = withLoadKind(s.loadKind, ex.id, 'single')
+    })}>
+      {getLang() === 'ru' ? 'Этот тренажёр с блинами' : t('This machine uses plates')}
+    </Button>}
     {pyramid
       ? <div className="small dim" style={{ marginBottom: 18 }}>{t('Weight is up to you: pyramid sets are not progressed automatically.')}</div>
       : <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} perSide={perSide} bw={bw} />}
@@ -3379,7 +3407,12 @@ function doFinishWorkout() {
     if (beatsWeight(e.id, mx, bestWeightFor(st, e.id, entryDbLoad(e)))) prs.push(e.id)
     // A heavier estimate without a heavier top set is its own kind of progress —
     // same weight for more reps. Reported separately so it can't be read as a load PR.
-    const rec = is1RMRecord(st, e.id, e)
+    const target = { ...(e.target || {}), id: e.id }
+    const canEstimate = exerciseToolPolicy(exOr(e.id), {
+      mode: modeOf(target), bodyweight: target.bodyweight,
+      hasMeaningfulLoad: e.sets.some(s => Number(s.w) > 0),
+    }).oneRM
+    const rec = canEstimate ? is1RMRecord(st, e.id, e) : null
     if (rec && !prs.includes(e.id)) e1prs.push({ id: e.id, ...rec })
   })
   const w = buildCompletedWorkout(A, {

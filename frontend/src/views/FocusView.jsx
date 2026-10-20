@@ -16,8 +16,9 @@ import {
 import { weightIncrement, stepWeight } from '../lib/progression.js'
 import { speedUnitOf, toSpeed, fromSpeed } from '../lib/speed.js'
 import { effortPickerSheet, exerciseDetailSheet, exerciseHistorySheet, exerciseNoteSheet, menuSheet, barWeightSheet } from '../sheets.jsx'
-import { baseWeightFor, inventoryFor, loadKindFor, rowLoad } from '../lib/plates.js'
+import { baseWeightFor, inventoryFor, loadKindOf, loadKindFor, rowLoad } from '../lib/plates.js'
 import { ownedWeightsFor, stepOwned } from '../lib/dumbbells.js'
+import { exerciseToolPolicy } from '../lib/exercise-tools.js'
 import Icon from '../components/Icon.jsx'
 import { Button, Stepper } from '../components/ui.jsx'
 import './FocusView.css'
@@ -97,8 +98,16 @@ function PlanBadge({ entry, mode }) {
 }
 
 function PlateBadge({ S, entry, set }) {
-  if (modeOf({ ...(entry.target || {}), id: entry.id }) !== 'reps') return null
-  const load = rowLoad(loadKindFor(S, { ...(entry.target || {}), id: entry.id }), set.w, baseWeightFor(S, entry.id), inventoryFor(S))
+  const cfg = { ...(entry.target || {}), id: entry.id }
+  const mode = modeOf(cfg)
+  const loadKind = loadKindFor(S, cfg)
+  const policy = exerciseToolPolicy(exOr(entry.id), {
+    mode, bodyweight: cfg.bodyweight, loadKind,
+    loadKindExplicit: loadKindOf(S.loadKind?.[entry.id]) != null && loadKindOf(S.loadKind?.[entry.id]) !== 'none',
+    hasMeaningfulLoad: entry.sets?.some(row => Number(row?.w) > 0),
+  })
+  if (!policy.plates) return null
+  const load = rowLoad(loadKind, set.w, baseWeightFor(S, entry.id), inventoryFor(S))
   if (!load) return null
   const stack = load.plates.map(fmtPlate).join(' + ')
   const text = load.barOnly ? t('Bar only')
@@ -129,6 +138,13 @@ export default function FocusView({
   const locked = !set.done && setIdx > firstOpenSet
   const readOnly = set.done || locked
   const mode = modeOf({ ...(entry.target || {}), id: entry.id })
+  const cfg = { ...(entry.target || {}), id: entry.id }
+  const toolPolicy = exerciseToolPolicy(exOr(entry.id), {
+    mode,
+    bodyweight: cfg.bodyweight,
+    loadKind: loadKindFor(S, cfg),
+    loadKindExplicit: loadKindOf(S.loadKind?.[entry.id]) != null && loadKindOf(S.loadKind?.[entry.id]) !== 'none',
+  })
   const effort = effortOf(S)
   const effortField = EFFORT[effort]?.f
   const effortValue = effortField ? set[effortField] ?? null : null
@@ -227,7 +243,7 @@ export default function FocusView({
       { icon: 'history', label: t('History'), onClick: () => exerciseHistorySheet(entry.id) },
       { icon: 'chartLine', label: t('Progression settings'), onClick: onProgressionSettings },
       onNoProg && { icon: 'pause', label: t('Don’t count for progression'), sub: t('This exercise, this session only'), on: entry.noProg === true, onClick: () => onNoProg(entry.noProg !== true) },
-      mode === 'reps' && { icon: 'plate', label: t('Plate loading'), onClick: () => barWeightSheet(entry.id, { ...(entry.target || {}), id: entry.id }) },
+      toolPolicy.plates && { icon: 'plate', label: t('Plate loading'), onClick: () => barWeightSheet(entry.id, cfg) },
       onPairPrev && { icon: 'link', label: t('Make superset with previous'), onClick: onPairPrev },
       onPairNext && { icon: 'link', label: t('Make superset with next'), onClick: onPairNext },
       { icon: 'shuffle', label: t('Swap exercise'), onClick: onSwap, disabled: busy },

@@ -75,6 +75,23 @@ afterEach(() => {
 })
 
 describe('PlanLink', () => {
+  it('labels the paste field separately from its iPhone hint and previews the pasted link', async () => {
+    mocks.incoming = ''
+    await mount()
+    const field = host.querySelector('textarea')
+    const label = host.querySelector(`label[for="${field.id}"]`)
+    expect(label.textContent).toBe('Plan link')
+    const hint = host.querySelector('#' + field.getAttribute('aria-describedby'))
+    expect(hint.textContent).toContain('touch and hold')
+    expect(label.contains(hint)).toBe(false)
+    typeInto(field, 'https://example.test/#/import-plan/example')
+    typeInto(input('password'), 'correct-code')
+    await act(async () => submit().click())
+    await flush()
+    expect(mocks.extract).toHaveBeenCalledWith('https://example.test/#/import-plan/example')
+    expect(mocks.decode).toHaveBeenCalledWith('pasted-payload', 'correct-code')
+    expect(mocks.importSheet).toHaveBeenCalled()
+  })
   it('scrubs an incoming payload route from history before decrypting', async () => {
     const pending = new Promise(() => {})
     mocks.decode.mockReturnValue(pending)

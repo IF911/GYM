@@ -161,6 +161,7 @@ export default function Plan() {
   const pickFile = ev => { const f = ev.target.files[0]; ev.target.value = ''; importPlanFile(f) }
 
   const mode = scheduleModeOf(S)
+  const linkLabel = getLang() === 'ru' ? 'Добавить программу по ссылке' : 'Add a plan by link'
 
   return <div className="narrow plan">
     <div className="hdr">
@@ -170,6 +171,8 @@ export default function Plan() {
         <button className="iconbtn" onClick={openMenu} aria-label={t('Plan options')} title={t('Plan options')}><Icon name="share" /></button>
       </div>
     </div>
+    {LOCAL && <Button className="plan-link-import" variant="tinted" icon="link"
+      style={{ marginBottom: 16 }} onClick={() => nav('/import-plan')}>{linkLabel}</Button>}
     <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden />
     <Segmented className="plan-views" value={view} onChange={setView}
       options={[{ value: 'schedule', label: t('Schedule') }, { value: 'routines', label: t('Routines') }]} />

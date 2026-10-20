@@ -27,6 +27,7 @@ import { anchorsByWorkout, resolveSetRir } from '../lib/recovery.js'
 import { Button, Segmented, SelectRow } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
+import { exerciseToolPolicy } from '../lib/exercise-tools.js'
 
 // Set 1 to 5 on the per-set chart — system colours, so each line keeps its hue in dark mode.
 const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purple)', 'var(--pink)']
@@ -135,7 +136,9 @@ function MuscleBalance({ S }) {
   const bodyweightKg = useMemo(() => profileBodyweightKg(S), [S.bodyweight, S.unit])
   const fatigue = useMemo(() => fatigueOf(workouts, now, { bodyweightKg, unit: S.unit }), [workouts, now, bodyweightKg, S.unit])
   const strength = useMemo(() => strengthOf(workouts, now, { bodyweightKg, unit: S.unit }), [workouts, now, bodyweightKg, S.unit])
-  const muscleExercises = useMemo(() => (sel ? strengthExerciseRowsForMuscle(S, now, sel) : []), [S, now, sel, lang])
+  const muscleExercises = useMemo(() => (sel ? strengthExerciseRowsForMuscle(S, now, sel).filter(row =>
+    exerciseToolPolicy(EXIDX[row.id] || { id: row.id }, { mode: 'reps' }).oneRM,
+  ) : []), [S, now, sel, lang])
   const lastTrained = useMemo(() => latestMuscleTraining(workouts), [workouts])
   const strengthHint = slug => {
     if (lastTrained[slug] == null) return t('not trained')
@@ -558,11 +561,11 @@ export default function Stats() {
   // tooltip vanish under your finger the moment anything else on this screen re-rendered.
   // Memoising only the .map() would not have helped — its dependency was itself rebuilt each time.
   const e1Pts = useMemo(
-    () => (curEx && curMode === 'reps' ? e1rmSeries(S, curEx) : []),
-    [S, curEx, curMode],
+    () => (curEx && curMode === 'reps' && exerciseToolPolicy(EXIDX[curEx] || { id: curEx }, { mode: curMode, bodyweight: repsOnly, hasMeaningfulLoad: !repsOnly }).oneRM ? e1rmSeries(S, curEx) : []),
+    [S, curEx, curMode, repsOnly],
   )
   const e1ChartPts = useMemo(() => e1Pts.filter(p => p.t >= exFrom).map(p => ({ t: p.t, y: p.y, d: p.d })), [e1Pts, exFrom])
-  const e1Best = curEx && curMode === 'reps' ? best1RM(S, curEx) : null
+  const e1Best = curEx && curMode === 'reps' && exerciseToolPolicy(EXIDX[curEx] || { id: curEx }, { mode: curMode, bodyweight: repsOnly, hasMeaningfulLoad: !repsOnly }).oneRM ? best1RM(S, curEx) : null
   const showE1 = e1Pts.length > 0
   // Effort on this exercise, per session. It rides on the top-set curve as well as having a
   // curve of its own, because the two only mean something together: the same weight moved
@@ -589,7 +592,7 @@ export default function Stats() {
   const perSet = useMemo(() => {
     if (!curEx || curMode !== 'reps') return null
     const usable = list => list.length >= 2 && list.some(s => s.sets.length >= 2)
-    let metric = repsOnly || isAssisted(curEx) ? 'reps' : 'e1rm'
+    let metric = repsOnly || isAssisted(curEx) || !exerciseToolPolicy(EXIDX[curEx] || { id: curEx }, { mode: curMode, bodyweight: repsOnly, hasMeaningfulLoad: !repsOnly }).oneRM ? 'reps' : 'e1rm'
     let sessions = perSetSessions(workouts, curEx, { metric, formula: oneRmFormula })
     if (metric === 'e1rm' && !usable(sessions)) sessions = perSetSessions(workouts, curEx, { metric: metric = 'reps' })
     if (!usable(sessions)) return null

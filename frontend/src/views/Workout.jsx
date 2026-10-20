@@ -7,7 +7,7 @@ import { workoutControls } from '../lib/workout-controls.js'
 import { useUI } from '../store/useUI.js'
 import { exOr, betterWeight } from '../lib/exercises.js'
 import { usesBar } from '../lib/bar.js'
-import { loadKindFor, baseWeightFor, inventoryFor, rowLoad, sameLoad, plateDelta, dropGrid } from '../lib/plates.js'
+import { loadKindOf, loadKindFor, baseWeightFor, inventoryFor, rowLoad, sameLoad, plateDelta, dropGrid } from '../lib/plates.js'
 import { effectiveRoutines, effectiveRoutineIds, lastEntryFor, bestWeightFor, bestWeightForEntry, buildSets, freestyleConfig, defaultConfig, setsDoneActive, setUnitsTotal, supersetUnits, unitOf, setLabel, modeOf, isBw, isPerSide, repStep, EFFORT, effortOf, stepEffort, capEffort, cascadeWeight, insertWarmupRow, barFloor, makeWarmupAt, canBeWarmup, makeWorkAt, removeRowAt, removeLastSet, setSpanAt, copyRowAt, copySpanAt, insertRowAt, pairAdjacent, unpairSuperset, cleanupSg, applyIntensifierPlan, pinnedNoteFor, exNoteFor, setsRepsOf } from '../lib/history.js'
 import { fmtNum, fmtPlate, exerciseNameText, fmtDate, fmtDaysAgo, todayISO, exCount, DAYN } from '../lib/format.js'
 import { speedUnitOf, toSpeed, fromSpeed } from '../lib/speed.js'
@@ -46,6 +46,7 @@ import { nextOpenSet, workoutKeyAction } from '../lib/workout-keys.js'
 import { MUSCLE_NAME } from '../lib/muscles.js'
 import FocusView from './FocusView.jsx'
 import { withMeaning, historyAs, dbLoadFor, entryDbLoad, bellsIn, ownedWeightsFor, stepOwned } from '../lib/dumbbells.js'
+import { exerciseToolPolicy } from '../lib/exercise-tools.js'
 
 // How long after a key starts a hold the same key is not yet its "Done" (#133). A USB button
 // that bounces, or a double press, sends two presses a moment apart: the first starts the hold,
@@ -339,10 +340,17 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
   // The rows and their drop-set sub-rows form one sequence in the order the bar sees them, keyed
   // `i` for a set and `i:dN` for its N-th drop; a rest-pause burst keeps the set's weight, so it
   // is not in the sequence.
-  const plateLoading = mode === 'reps' && !editing
-  const loadKind = plateLoading ? loadKindFor(S, cfg) : 'none'
+  const loadKind = mode === 'reps' ? loadKindFor(S, cfg) : 'none'
+  const platePolicy = exerciseToolPolicy(ex, {
+    mode,
+    bodyweight: cfg.bodyweight,
+    loadKind,
+    hasMeaningfulLoad: entry.sets?.some(set => Number(set?.w) > 0),
+    loadKindExplicit: loadKindOf(S.loadKind?.[entry.id]) != null && loadKindOf(S.loadKind?.[entry.id]) !== 'none',
+  })
+  const plateLoading = mode === 'reps' && !editing && platePolicy.plates
   const base = baseWeightFor(S, entry.id)
-  const loadSeq = loadKind === 'none' ? [] : (() => {
+  const loadSeq = !plateLoading || loadKind === 'none' ? [] : (() => {
     const inv = inventoryFor(S)
     const out = []
     entry.sets.forEach((s, i) => {
