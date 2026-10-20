@@ -1844,7 +1844,27 @@ export const useStore = create((set, get) => {
     // Boot: ask the server who we are, then pull.
     async boot() {
       if (LOCAL) {
-        get().setGuest(true)
+        try { get().setGuest(true) } catch { /* LOCAL is implicitly a guest even if storage is blocked. */ }
+        // The Russian catalogue release kept old English profiles in English. Adopt Russian
+        // once on this device; a later deliberate language choice must survive every boot.
+        let russianAdopted = false
+        try { russianAdopted = localStorage.getItem('gym_ru_default_v1') === '1' } catch { /* use the in-memory copy */ }
+        if (!russianAdopted) {
+          const st = get().S
+          if (!st.lang || st.lang === 'en' || st.langAuto === true) {
+            get().update(s => {
+              s.lang = 'ru'; s.langAuto = false
+              s.enOnly = { ...s.enOnly, ru: s.enOnly?.ru ?? false }
+              s.enParens = { ...s.enParens, ru: s.enParens?.ru ?? false }
+            })
+          }
+          try {
+            // persist keeps the diary in memory if the write is refused. Do not mark a
+            // migration that did not reach disk, or the next launch would keep old English.
+            const saved = JSON.parse(localStorage.getItem(KEY) || 'null')
+            if (saved?.lang === get().S.lang) localStorage.setItem('gym_ru_default_v1', '1')
+          } catch { /* boot still completes; retry the migration on a later launch */ }
+        }
         set({ user: null, config: LOCAL_CONFIG, linkCode: null })
         finishBoot()
         return

@@ -20,6 +20,7 @@ const protectedFiles = new Set([
 export function isProtected(file) {
   return protectedFiles.has(file) || file.startsWith('.github/workflows/') ||
     file.startsWith('scripts/upstream-sync') || file.startsWith('frontend/src/lib/local') ||
+    file.startsWith('frontend/src/lib/plan-link') || file.startsWith('frontend/src/views/PlanLink') ||
     file === 'frontend/src/lib/sw-local.test.js' || file.startsWith('frontend/scripts/fixtures/local-upgrade')
 }
 function git(cwd, args, { allowFailure = false, env = {} } = {}) {

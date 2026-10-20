@@ -1,6 +1,6 @@
 // A separate browser build: an empty, device-only diary, never a seeded demo or an account.
 export const LOCAL = import.meta.env.VITE_LOCAL === '1'
-export const LOCAL_CONFIG = Object.freeze({ allow_guest: true, coach: null, password_login: false })
+export const LOCAL_CONFIG = Object.freeze({ allow_guest: true, coach: null, password_login: false, default_lang: 'ru' })
 
 // Only static downloads from this installation are needed. This also catches a future feature
 // accidentally calling fetch directly rather than going through the disabled API transport.

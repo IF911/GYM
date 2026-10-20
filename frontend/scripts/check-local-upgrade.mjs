@@ -87,6 +87,15 @@ async function main(oldDir, newDir) {
     await page.goto(origin, { waitUntil: 'networkidle' })
     await withTimeout(page.evaluate(() => navigator.serviceWorker.ready), 10000, 'old service worker did not become ready')
     await withTimeout(page.waitForFunction(() => !!navigator.serviceWorker.controller), 10000, 'old service worker did not control the page')
+    // This shared smoke test uses English selectors. Pick English deliberately after the
+    // one-time Russian default migration, just as Settings does; upgrades must respect it.
+    await page.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('gym_state_v1') || '{"weighIn":false,"gifSize":"mini"}')
+      s.lang = 'en'; s.langAuto = false
+      localStorage.setItem('gym_state_v1', JSON.stringify(s))
+      localStorage.setItem('gym_ru_default_v1', '1')
+    })
+    await page.reload({ waitUntil: 'networkidle' })
     await page.goto(origin + '#/plan', { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: 'Load starter plan', exact: true }).click()
     await page.getByRole('button', { name: /Full Body.*3 days/ }).click()
@@ -155,7 +164,11 @@ async function main(oldDir, newDir) {
     assert.deepEqual(afterUpdate.media, mediaBytesBefore, 'IndexedDB media bytes changed across deployment')
 
     await context.setOffline(true)
-    await page.evaluate(() => localStorage.clear())
+    await page.evaluate(() => {
+      localStorage.clear()
+      localStorage.setItem('gym_ru_default_v1', '1')
+      localStorage.setItem('gym_state_v1', JSON.stringify({ lang: 'en', langAuto: false, weighIn: false }))
+    })
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1') || '{}').workouts?.length || 0), 0, 'disposable state was not cleared')

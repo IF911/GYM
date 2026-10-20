@@ -12,6 +12,56 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('local PWA diary', () => {
+  it('defaults to Russian even on an English device and respects another explicitly selected locale', async () => {
+    await useStore.getState().boot()
+    expect(useStore.getState().S.lang).toBe('ru')
+    expect(useStore.getState().config.default_lang).toBe('ru')
+    localStorage.removeItem('gym_ru_default_v1')
+    useStore.setState({ S: { ...clone(DEF), lang: 'de', langAuto: false } })
+    await useStore.getState().boot()
+    expect(useStore.getState().S.lang).toBe('de')
+  })
+  it('opens an existing English diary in Russian once, without changing its records', async () => {
+    const old = clone(DEF)
+    old.lang = 'en'; old.langAuto = false
+    old.workouts = [{ id: 'kept-workout', d: '2026-10-20', entries: [] }]
+    old.routines = [{ id: 'kept-routine', name: 'My routine', ex: [] }]
+    old.bodyweight = [{ d: '2026-10-20', v: 75 }]
+    useStore.setState({ S: old })
+    await useStore.getState().boot()
+    const current = useStore.getState().S
+    expect(current.lang).toBe('ru')
+    expect(current.langAuto).toBe(false)
+    expect(current.enOnly.ru).toBe(false)
+    expect(current.enParens.ru).toBe(false)
+    for (const key of ['workouts', 'routines', 'bodyweight', 'week']) expect(current[key]).toEqual(old[key])
+    useStore.getState().update(s => { s.lang = 'en' })
+    await useStore.getState().boot()
+    expect(useStore.getState().S.lang).toBe('en')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  it('preserves deliberately selected Russian name preferences', async () => {
+    useStore.setState({ S: { ...clone(DEF), lang: 'ru', langAuto: false, enOnly: { ru: true }, enParens: { ru: true } } })
+    await useStore.getState().boot()
+    expect(useStore.getState().S.enOnly.ru).toBe(true)
+    expect(useStore.getState().S.enParens.ru).toBe(true)
+  })
+  it('finishes boot when storage refuses access, without marking a failed save', async () => {
+    const storage = globalThis.localStorage
+    vi.stubGlobal('localStorage', {
+      getItem: key => storage.getItem(key), removeItem: key => storage.removeItem(key),
+      setItem: () => { throw new Error('storage refused') },
+    })
+    await expect(useStore.getState().boot()).resolves.toBeUndefined()
+    expect(useStore.getState().ready).toBe(true)
+    expect(storage.getItem('gym_ru_default_v1')).toBeNull()
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('storage blocked') },
+      setItem: (key, value) => storage.setItem(key, value), removeItem: key => storage.removeItem(key),
+    })
+    await expect(useStore.getState().boot()).resolves.toBeUndefined()
+    expect(useStore.getState().ready).toBe(true)
+  })
   it('boots empty without an account, demo history, or any server request', async () => {
     localStorage.setItem('gym_user', JSON.stringify({ id: 'old-account' }))
     await useStore.getState().boot()
