@@ -16,6 +16,8 @@ const protectedFiles = new Set([
   'frontend/src/store/useStore.js', 'frontend/src/App.jsx',
   'frontend/src/views/Settings.jsx', 'frontend/src/views/settings-pages.js',
   'frontend/src/store/useStore.local.test.js', 'frontend/src/views/Settings.local.test.jsx',
+  'frontend/src/lib/local-pwa-update.js', 'frontend/src/lib/local-pwa-update.test.js',
+  'frontend/src/components/LocalPwaUpdate.jsx', 'frontend/src/components/LocalPwaUpdate.test.jsx',
 ])
 export function isProtected(file) {
   return protectedFiles.has(file) || file.startsWith('.github/workflows/') ||

@@ -81,6 +81,21 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
   await self.clients.claim()
 })()))
 
+// The current page may still run an older bundle after claim(). Report only the cached
+// shell's public entry URL so it can offer a deliberate reload, including on first claim.
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'GYM_SHELL_INFO' || !event.ports?.[0] || typeof event.source?.url !== 'string' || !localUrl(event.source.url)) return
+  event.waitUntil((async () => {
+    const index = await (await caches.open(CACHE)).match(new URL('./index.html', self.location.href).href)
+    const html = index ? await index.text() : ''
+    const ref = html.match(/<script\s+[^>]*type=["']module["'][^>]*src=["']([^"']+)["']/i)?.[1]
+    const entry = ref && localUrl(ref)
+    const styles = [...html.matchAll(/<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["']/gi)]
+      .map(match => localUrl(match[1])?.href).filter(Boolean).sort()
+    event.ports[0].postMessage({ entry: entry?.href || null, styles })
+  })())
+})
+
 self.addEventListener('fetch', event => {
   const request = event.request
   const isLocal = localUrl(request.url)

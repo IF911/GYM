@@ -44,6 +44,27 @@ function event(path, { method = 'GET', headers = {}, mode = 'cors' } = {}) {
 }
 
 describe('local service worker', () => {
+  it('reports the cached shell entry to this installation without sharing any diary data', async () => {
+    const w = worker()
+    const cache = await w.caches.open('gym-local-%2FGYM%2F-__BUILD__')
+    await cache.put(ORIGIN + '/GYM/index.html', new Response('<script type="module" crossorigin src="./assets/index-new.js"></script><link rel="stylesheet" href="./assets/index-new.css">'))
+    let done, info
+    w.listeners.message({ data: { type: 'GYM_SHELL_INFO' }, source: { url: ORIGIN + '/GYM/#/plan' },
+      ports: [{ postMessage: value => { info = value } }], waitUntil: task => { done = task } })
+    await done
+    expect(info).toEqual({ entry: ORIGIN + '/GYM/assets/index-new.js', styles: [ORIGIN + '/GYM/assets/index-new.css'] })
+  })
+
+  it('ignores shell-info requests outside this installation or without a reply port', () => {
+    const w = worker()
+    const reply = () => { throw new Error('unexpected shell reply') }
+    for (const source of ['https://other.example/GYM/', ORIGIN + '/other-app/']) {
+      w.listeners.message({ data: { type: 'GYM_SHELL_INFO' }, source: { url: source }, ports: [{ postMessage: reply }] })
+    }
+    w.listeners.message({ data: { type: 'GYM_SHELL_INFO' }, source: { url: ORIGIN + '/GYM/' }, ports: [] })
+    w.listeners.message({ data: { type: 'GYM_SHELL_INFO' }, ports: [{ postMessage: reply }] })
+  })
+
   it('opens the installed app at its directory URL without a network', async () => {
     const w = worker({ fetchImpl: async () => { throw new TypeError('offline') } })
     const cache = await w.caches.open('gym-local-%2FGYM%2F-__BUILD__')

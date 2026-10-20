@@ -194,6 +194,7 @@ body.no-tabbar.resting #app{padding-bottom:calc(96px + var(--sab))}
   -webkit-backdrop-filter:saturate(180%) blur(10px);backdrop-filter:saturate(180%) blur(10px);
 }
 .conn-row{max-width:560px;margin:0 auto;padding:6px 0}
+.local-update-bar .conn-a{border:0;white-space:nowrap;min-height:44px;cursor:pointer}
 .conn{
   display:flex;align-items:center;gap:9px;width:100%;text-align:start;min-height:34px;
   padding-block:6px;padding-inline:12px 8px;border-radius:var(--r);

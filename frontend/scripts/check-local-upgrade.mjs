@@ -139,7 +139,23 @@ async function main(oldDir, newDir) {
     assert.equal(backup.workouts.length, 1, 'JSON export lost workout')
     assert.ok(backup.customEx.some(x => x.id === 'qa-custom'), 'JSON export lost custom exercise')
 
+    await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
+    await page.getByText('Full Body A', { exact: true }).click()
+    await page.getByRole('checkbox', { name: 'Set 1 done', exact: true }).waitFor()
+    await page.locator('.setrow').first().locator('input').nth(0).fill('40')
+    await page.locator('.setrow').first().locator('input').nth(1).fill('6')
+    await page.getByRole('checkbox', { name: 'Set 1 done', exact: true }).click()
+    const activeBeforeUpdate = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')).active)
+    assert.ok(activeBeforeUpdate, 'second workout must still be active during update')
+    await page.goto(origin + '#/settings/about', { waitUntil: 'domcontentloaded' })
+    const hasUpdateUI = await page.getByText('Check for GYM updates', { exact: true }).count() > 0
+    const oldModuleSrc = await page.locator('script[type="module"]').first().getAttribute('src')
     await page.evaluate(() => {
+      // Unsaved DOM state must survive receiving the update. The app offers a reload; it
+      // must never navigate a resident iPhone client out from under an open form/workout.
+      const field = document.createElement('input')
+      field.id = 'qa-unsaved-input'; field.value = 'Keep my unfinished input'
+      document.body.appendChild(field)
       window.__gymControllerChanges = 0
       navigator.serviceWorker.addEventListener('controllerchange', () => { window.__gymControllerChanges++ })
     })
@@ -148,7 +164,18 @@ async function main(oldDir, newDir) {
       const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update()
     })
     if (workerChanged) await withTimeout(page.waitForFunction(() => window.__gymControllerChanges > 0), 10000, 'changed service worker did not trigger controllerchange')
-    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(await page.locator('script[type="module"]').first().getAttribute('src'), oldModuleSrc, 'update unexpectedly reloaded a resident client')
+    assert.equal(await page.locator('#qa-unsaved-input').inputValue(), 'Keep my unfinished input', 'update discarded unsaved input')
+    if (hasUpdateUI && oldIndex !== newIndex) {
+      await page.getByRole('button', { name: 'Update', exact: true }).waitFor()
+      await page.getByRole('button', { name: 'Update', exact: true }).click()
+      await page.waitForLoadState('networkidle')
+    } else {
+      // A client from before the updater UI needs one real restart. There is no listener
+      // in that older bundle; forcing WindowClient.navigate would discard open input.
+      await page.reload({ waitUntil: 'networkidle' })
+    }
+    await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     const loadedModuleSrc = await page.locator('script[type="module"]').first().getAttribute('src')
     assert.equal(new URL(loadedModuleSrc, origin).href, new URL(newModuleSrc, origin).href, 'page loaded a module script other than new-index script')
@@ -161,6 +188,7 @@ async function main(oldDir, newDir) {
     assert.deepEqual(afterUpdate.state.routines, state.routines, 'routines changed across deployment')
     assert.deepEqual(afterUpdate.state.customEx, state.customEx, 'custom exercises changed across deployment')
     assert.deepEqual(afterUpdate.state.bodyweight, state.bodyweight, 'bodyweight changed across deployment')
+    assert.deepEqual(afterUpdate.state.active, activeBeforeUpdate, 'active workout changed across deployment')
     assert.deepEqual(afterUpdate.media, mediaBytesBefore, 'IndexedDB media bytes changed across deployment')
 
     await context.setOffline(true)
@@ -180,7 +208,7 @@ async function main(oldDir, newDir) {
     assert.ok(restored.customEx.some(x => x.id === 'qa-custom'), 'offline JSON import lost custom exercise')
     assertCleanRequests('upgrade check')
     assert.deepEqual(pageErrors, [], `page errors: ${JSON.stringify(pageErrors)}`)
-    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
+    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
     console.log(JSON.stringify(result, null, 2))
   } finally {
     await context?.close().catch(() => {})

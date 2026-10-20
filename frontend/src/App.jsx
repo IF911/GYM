@@ -25,6 +25,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Modals from './components/Modals.jsx'
 import Toast from './components/Toast.jsx'
 import SyncBanner from './components/SyncBanner.jsx'
+import { LocalPwaUpdateBanner } from './components/LocalPwaUpdate.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import TimerFlash from './components/TimerFlash.jsx'
 import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
@@ -239,7 +240,7 @@ function Shell() {
       {/* Outside #app: the view's fade-in animates a transform, and a fixed element inside it
           would ride along with the page for the length of it. Decides for itself when to show —
           including on the sign-in screen, when the server has just ended the session. */}
-      <SyncBanner />
+      {LOCAL ? <LocalPwaUpdateBanner /> : <SyncBanner />}
       {!noTabs && <TabBar onStart={startFlow} />}
       <RestTimer />
       <Modals />

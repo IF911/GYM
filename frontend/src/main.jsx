@@ -6,6 +6,7 @@ import { LOCAL, installLocalPrivacy, requestLocalPersistence } from './lib/local
 import { useStore } from './store/useStore.js'
 import { startMediaSync } from './lib/media-sync.js'
 import { startNativeKeyboard } from './lib/native-keyboard.js'
+import { startLocalPwaUpdates } from './lib/local-pwa-update.js'
 import './index.css'
 
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.
@@ -29,7 +30,8 @@ startNativeKeyboard()
 
 // Not in the mobile build: the native shell already serves everything from disk.
 if (!MOBILE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  navigator.serviceWorker.register('sw.js').catch(() => {})
+  if (LOCAL) startLocalPwaUpdates()
+  else navigator.serviceWorker.register('sw.js').catch(() => {})
   // The plan's exercise media, kept by the worker for a workout opened without a network (#281).
   // It only fetches ahead while the page runs as the installed app; a tab keeps what it has shown.
   import('./lib/media-prefetch.js').then(m => m.startMediaPrefetch(useStore)).catch(() => {})
