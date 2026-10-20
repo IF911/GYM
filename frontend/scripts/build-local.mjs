@@ -27,6 +27,7 @@ if (!fs.existsSync(path.join(media, 'still')) || !fs.existsSync(path.join(media,
 }
 const stage = spawnSync(process.execPath, [path.join(root, 'scripts/catalogue/stage-media.mjs'), dist], { cwd: root, env, stdio: 'inherit' })
 if (stage.status !== 0) process.exit(stage.status || 1)
+for (const name of ['LICENSE', 'NOTICE.md']) fs.copyFileSync(path.join(root, name), path.join(dist, name))
 
 const excluded = [
   /^(?:\.git|node_modules|dist|data|private|runtime)(?:\/|$)/,

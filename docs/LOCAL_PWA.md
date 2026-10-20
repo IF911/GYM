@@ -1,8 +1,9 @@
 # Локальная PWA GYM
 
 GYM собирается как статический PWA для GitHub Pages и устанавливается на главный экран iPhone.
-Тренировки и настройки хранятся только в `localStorage` телефона. В настройках приложения можно
-сохранить резервную копию JSON и восстановить её на этом же или другом устройстве.
+Тренировки и настройки хранятся в `localStorage` телефона, собственные фото и видео — в IndexedDB.
+В настройках приложения можно сохранить резервную копию JSON или ZIP с медиа и восстановить её
+на этом же или другом устройстве.
 
 ## Установка на iPhone
 
@@ -22,14 +23,16 @@ API и внешние адреса. API и запросы записи блок�
 коммита под AGPL-3.0-or-later без секретов, runtime, `node_modules`, native shells и бинарных
 media. Лицензированные media восстанавливаются отдельно из каталога `catalogue/media` ровно из
 upstream commit `e348fc17`; файл `catalogue/media/NOTICE.md` обязателен.
+`LICENSE` и `NOTICE.md` также опубликованы рядом с приложением; ссылка на уведомления не зависит
+от сайта или будущих изменений исходного проекта.
 
 ## GitHub Pages
 
 Workflow `.github/workflows/local-pwa.yml` выполняет `npm ci`, тесты, проверки locale, `npm run
 build:local`, затем публикует `frontend/dist` через встроенный `GITHUB_TOKEN`. Один раз включите
-Settings → Pages → Source: GitHub Actions. Для private repository публикация Pages требует
-тариф GitHub, на котором доступен Pages для private repositories. Сборка запускается на push в
-`main` и вручную из Actions.
+Settings → Pages → Source: GitHub Actions. Для бесплатной публикации используется публичный
+`IF911/GYM`: код и материалы доступны всем, дневник каждого пользователя остаётся на его
+устройстве. Сборка запускается на push в `main` и вручную из Actions.
 
 При проблеме выполните `git revert` для проблемного commit в `main` и отправьте новый commit; старый cache
 service worker удаляется только после успешной установки нового shell. Откат Pages не восстанавливает
