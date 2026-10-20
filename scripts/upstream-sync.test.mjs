@@ -7,6 +7,11 @@ import { test } from 'node:test'
 
 import { prepareUpdate, promoteUpdate, reportUpdate, isProtected } from './upstream-sync.mjs'
 
+// A clean CI runner must not depend on a developer's implicit Git identity.
+process.env.GIT_CONFIG_COUNT = '1'
+process.env.GIT_CONFIG_KEY_0 = 'user.useConfigOnly'
+process.env.GIT_CONFIG_VALUE_0 = 'true'
+
 const gitEnv = {
   ...process.env,
   GIT_CONFIG_NOSYSTEM: '1',

@@ -133,7 +133,9 @@ jobs:
     if: >-
       always() && !cancelled() &&
       (needs.prepare.outputs.state == 'blocked' || needs.prepare.result == 'failure' ||
-       needs.validate.result == 'failure' || needs.promote.result == 'failure')
+       needs.validate.result == 'failure' || needs.promote.result == 'failure' ||
+       (needs.validate.result == 'success' &&
+        (needs.prepare.outputs.state == 'verify' || needs.promote.result == 'success')))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -151,9 +153,15 @@ jobs:
         with:
           name: gym-sync-candidate
           path: ${{ runner.temp }}/gym-sync
-      - name: Create or update one GitHub issue for the blockage
+      - name: Report a blockage or resolve it after successful verification
         env:
           GH_TOKEN: ${{ github.token }}
+          SYNC_RESOLVED: ${{ needs.validate.result == 'success' && (needs.prepare.outputs.state == 'verify' || needs.promote.result == 'success') }}
           SYNC_FAILED_STAGE: ${{ needs.prepare.result == 'failure' && 'Preparation failed' || needs.validate.result == 'failure' && 'Compatibility checks failed' || needs.promote.result == 'failure' && 'Push or release dispatch failed' || '' }}
-        run: node scripts/upstream-sync.mjs report "$RUNNER_TEMP/gym-sync"
-      - run: exit 1
+        run: |
+          if [ "$SYNC_RESOLVED" = 'true' ]; then
+            node scripts/upstream-sync.mjs resolve "$RUNNER_TEMP/gym-sync"
+          else
+            node scripts/upstream-sync.mjs report "$RUNNER_TEMP/gym-sync"
+            exit 1
+          fi

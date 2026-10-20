@@ -55,12 +55,15 @@ export function prepareUpdate({ cwd = process.cwd(), outDir, upstream = UPSTREAM
   if (protectedChanges.length) {
     return resultFile(outDir, { ...result, state: 'blocked', reason: 'Upstream changes local privacy, licensing or automation boundaries', files: protectedChanges })
   }
-  const merge = git(cwd, ['-c', 'core.hooksPath=/dev/null', 'merge', '--no-commit', '--no-ff', upstreamSha], { allowFailure: true })
+  const merge = git(cwd, ['-c', 'core.hooksPath=/dev/null', '-c', 'user.name=github-actions[bot]',
+    '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+    'merge', '--no-commit', '--no-ff', upstreamSha], { allowFailure: true })
   if (merge.code) {
     const files = git(cwd, ['diff', '--name-only', '--diff-filter=U']).text.split('\n').filter(Boolean)
     const mergeHead = path.resolve(cwd, git(cwd, ['rev-parse', '--git-path', 'MERGE_HEAD']).text)
     if (fs.existsSync(mergeHead)) git(cwd, ['merge', '--abort'])
-    return resultFile(outDir, { ...result, state: 'blocked', reason: 'Git could not merge upstream without conflicts', files })
+    return resultFile(outDir, { ...result, state: 'blocked', reason: files.length
+      ? 'Git could not merge upstream without conflicts' : `Merge failed: ${merge.error}`, files })
   }
   const packageBefore = JSON.parse(git(cwd, ['show', `${base}:frontend/package.json`], { allowFailure: true }).text || '{}')
   const packagePath = path.join(cwd, 'frontend/package.json')
@@ -133,6 +136,12 @@ export async function reportUpdate({ dir, request = github, stage: failedStage =
   else await request('issues', { method: 'POST', body: { title: ISSUE_TITLE, body, assignees: ['IF911'] } })
 }
 
+async function resolveBlockage() {
+  const issues = await github('issues?state=open&creator=github-actions%5Bbot%5D&per_page=100')
+  const existing = issues.find(issue => !issue.pull_request && issue.title === ISSUE_TITLE)
+  if (existing) await github(`issues/${existing.number}`, { method: 'PATCH', body: { state: 'closed', state_reason: 'completed' } })
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const [mode, dir] = process.argv.slice(2)
   try {
@@ -141,6 +150,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
       console.log(JSON.stringify(r))
     } else if (mode === 'promote') await promoteUpdate({ dir })
     else if (mode === 'report') await reportUpdate({ dir })
+    else if (mode === 'resolve') await resolveBlockage()
     else throw new Error('Usage: upstream-sync.mjs prepare|promote|report <artifact-directory>')
   } catch (error) {
     if (mode === 'prepare' && dir) resultFile(dir, { state: 'error', reason: error.message })
