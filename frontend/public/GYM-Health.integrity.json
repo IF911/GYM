@@ -1,0 +1,10 @@
+{
+  "signed": {
+    "file": "GYM-Health.shortcut",
+    "sha256": "5b67185b65fffbb92bb38c38925d2982adc27267d1f520c26232ac5f0b04023a"
+  },
+  "source": {
+    "file": "GYM-Health.shortcut.plist",
+    "sha256": "30b73c32dc57cf7c264c9be17b62e6e3bac5d9be8ffc99fb5f14324df13d47c8"
+  }
+}

@@ -74,6 +74,20 @@ describe('local service worker', () => {
     expect(await (await request.response).text()).toBe('<html>offline app</html>')
   })
 
+  it('opens the signed shortcut file instead of the app document, including offline navigation', async () => {
+    const w = worker({ fetchImpl: async () => { throw new TypeError('offline') } })
+    const cache = await w.caches.open('gym-local-%2FGYM%2F-__BUILD__')
+    await cache.put(ORIGIN + '/GYM/index.html', new Response('<html>offline app</html>'))
+    await cache.put(ORIGIN + '/GYM/GYM-Health.shortcut', new Response('AEA1-signed-shortcut', {
+      headers: { 'content-type': 'application/octet-stream' },
+    }))
+    const request = event('/GYM/GYM-Health.shortcut', { mode: 'navigate' })
+    w.listeners.fetch(request)
+    const response = await request.response
+    expect(await response.text()).toBe('AEA1-signed-shortcut')
+    expect(response.headers.get('content-type')).toBe('application/octet-stream')
+  })
+
   it('keeps exercise media across updates and leaves other apps alone', async () => {
     const w = worker()
     const prefix = 'gym-local-%2FGYM%2F-'

@@ -18,6 +18,12 @@ const protectedFiles = new Set([
   'frontend/src/store/useStore.local.test.js', 'frontend/src/views/Settings.local.test.jsx',
   'frontend/src/lib/local-pwa-update.js', 'frontend/src/lib/local-pwa-update.test.js',
   'frontend/src/components/LocalPwaUpdate.jsx', 'frontend/src/components/LocalPwaUpdate.test.jsx',
+  'frontend/src/lib/workout-calories.js', 'frontend/src/lib/workout-calories.test.js',
+  'frontend/src/lib/health-shortcut.js', 'frontend/src/lib/health-shortcut.test.js',
+  'frontend/src/components/WorkoutEnergy.jsx', 'frontend/src/components/WorkoutEnergy.test.jsx',
+  'frontend/public/GYM-Health.shortcut', 'frontend/public/GYM-Health.shortcut.plist',
+  'frontend/public/GYM-Health.integrity.json',
+  'scripts/build-health-shortcut.py', 'scripts/build-health-shortcut.test.py',
 ])
 export function isProtected(file) {
   return protectedFiles.has(file) || file.startsWith('.github/workflows/') ||

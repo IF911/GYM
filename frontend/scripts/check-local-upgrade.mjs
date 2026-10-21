@@ -99,7 +99,9 @@ async function main(oldDir, newDir) {
     await page.goto(origin + '#/plan', { waitUntil: 'domcontentloaded' })
     await page.getByRole('button', { name: 'Load starter plan', exact: true }).click()
     await page.getByRole('button', { name: /Full Body.*3 days/ }).click()
-    await page.getByRole('button', { name: 'Start', exact: true }).click()
+    // The Start tab launches today's scheduled routine directly on training days.
+    // Open the chooser explicitly so this fixture selects Full Body A on every weekday.
+    await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
     await page.waitForURL('**/#/workout')
     await page.getByRole('heading', { name: 'Start workout', exact: true }).waitFor()
     await page.getByText('Full Body A', { exact: true }).click()

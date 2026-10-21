@@ -198,6 +198,7 @@ test('local diary, backup, network boundaries and the automation itself are prot
     'frontend/src/lib/api.js', 'frontend/public/sw-local.js', '.github/workflows/new-job.yml',
     'frontend/src/lib/plan-link.js', 'frontend/src/views/PlanLink.jsx',
     'frontend/src/lib/local-pwa-update.js', 'frontend/src/components/LocalPwaUpdate.jsx',
+    'frontend/src/lib/health-shortcut.js', 'frontend/src/components/WorkoutEnergy.jsx', 'frontend/public/GYM-Health.shortcut',
     'frontend/scripts/check-local-upgrade.mjs', 'scripts/upstream-sync.mjs', 'NOTICE.md']) {
     assert.ok(isProtected(file), file)
   }

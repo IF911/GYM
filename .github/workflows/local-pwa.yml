@@ -48,6 +48,8 @@ jobs:
         working-directory: frontend
       - run: npm test
         working-directory: frontend
+      - name: Check the on-device Apple Health shortcut
+        run: python3 scripts/build-health-shortcut.test.py
       - run: node scripts/check-locales.mjs
         working-directory: frontend
       - run: npm run test:fatigue-probe

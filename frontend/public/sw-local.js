@@ -60,7 +60,7 @@ async function installShell() {
   const html = await index.text()
   const refs = [...new Set([...html.matchAll(/(?:src|href)="([^"]+)"/g)].map(m => m[1]))]
     .filter(ref => /\.(?:js|css|png|svg|webmanifest|json)(?:\?|$)/.test(ref))
-  const files = [...new Set(['./index.html', ...refs, ...lazyAssets()])]
+  const files = [...new Set(['./index.html', './GYM-Health.shortcut', ...refs, ...lazyAssets()])]
   await Promise.all(files.map(async ref => {
     const url = localUrl(ref)
     if (!url) return
@@ -111,7 +111,10 @@ self.addEventListener('fetch', event => {
   }
   event.respondWith((async () => {
     const cache = await caches.open(CACHE)
-    const key = request.mode === 'navigate' ? new URL('./index.html', self.location.href).href : url.href
+    // Hash routes use the directory document. A file link opened in Safari/Files
+    // must receive its actual bytes, rather than another copy of the app HTML.
+    const appDocument = request.mode === 'navigate' && (url.pathname === SCOPE || url.pathname === `${SCOPE}index.html`)
+    const key = appDocument ? new URL('./index.html', self.location.href).href : url.href
     const hit = await cache.match(key)
     if (hit) return hit
     const response = await fetch(request, { redirect: 'error', credentials: 'omit', referrerPolicy: 'no-referrer' })
