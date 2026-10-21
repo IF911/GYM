@@ -56,10 +56,26 @@ requests и page errors. Сценарий smoke исправлен: явное �
 query-параметров с данными и page errors. Визуально проверены карточка, настройки и установка;
 лицензированные media скрыты при снимке.
 
-Публикация этого изменения выполняется; результат delivery будет зафиксирован после проверки
-Pages. Новых credentials нет, признаков
-компрометации нет, ротация не требуется. Для отката — revert функционального commit и штатный
-Pages release; данные дневника и существующие записи Apple Health откат кода не удаляет.
+| Поведение | Проверка |
+|---|---|
+| MET, активные калории, единицы, legacy timestamps и неполные записи | `workout-calories.test.js` |
+| Минимальный native payload, save-before-open и запрет обычного повтора | `health-shortcut.test.js`, `useStore.local.test.js` |
+| Уточнение веса, setup, pending/confirmed и backup | `WorkoutEnergy.test.jsx`, `useStore.local.test.js`, mobile runtime smoke |
+| Navigation по файлу и безопасное offline обновление | `sw-local.test.js`, `check-local-upgrade.mjs` |
+| Воспроизводимый plist, поля Health, отсутствие сетевых действий и SHA-256 | `build-health-shortcut.test.py` |
+
+Функциональный commit `2997399ff18324d54777ad54da2a72c754b6a285` отправлен в `main`.
+Pages [39599182668](https://github.com/IF911/GYM/actions/runs/39599182668) завершился success,
+включая повторные обязательные проверки. Live отдаёт ожидаемый `index-BMtCy1ke.js`, точный SW,
+подписанную команду и лицензии. Все 7573 файла публичного source archive прочитаны и совпадают
+с опубликованными исходниками; личных файлов в них нет. Повторный mobile runtime smoke на live
+успешен: реальное скачивание файла, local preferences, честные статусы передачи, offline расчёт,
+JSON round-trip и finish summary; 0 внешних/API/write requests и page errors.
+
+Обязательных незавершённых этапов нет. Опциональная проверка владельцем — один импорт и реальная
+запись на физическом iPhone с разрешением Health: её нельзя подтвердить desktop-тестом. Новых
+credentials нет, признаков компрометации нет, ротация не требуется. Для отката — revert `2997399f`
+и штатный Pages release; данные дневника и существующие записи Apple Health откат кода не удаляет.
 
 ## Обновление уже открытой PWA: 2026-10-20
 
