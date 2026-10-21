@@ -24,28 +24,41 @@ PUBLIC = ROOT / "frontend" / "public"
 SOURCE = PUBLIC / "GYM-Health.shortcut.plist"
 SIGNED = PUBLIC / "GYM-Health.shortcut"
 INTEGRITY = PUBLIC / "GYM-Health.integrity.json"
+DOWNLOAD = PUBLIC / "shortcuts" / "v2" / "GYM-Health.shortcut"
 
 ACTION_GET_DICT = "is.workflow.actions.detect.dictionary"
 ACTION_GET_VALUE = "is.workflow.actions.getvalueforkey"
 ACTION_LOG_WORKOUT = "is.workflow.actions.health.workout.log"
 
 
+def output_reference(output_uuid: str, output_name: str) -> dict:
+    return {"OutputName": output_name, "OutputUUID": output_uuid, "Type": "ActionOutput"}
+
+
 def token(output_uuid: str, output_name: str = "Dictionary Value") -> dict:
     return {
-        "Value": {
-            "OutputName": output_name,
-            "OutputUUID": output_uuid,
-            "Type": "ActionOutput",
-        },
+        "Value": output_reference(output_uuid, output_name),
         "WFSerializationType": "WFTextTokenAttachment",
+    }
+
+
+def date_field(output_uuid: str) -> dict:
+    # WFDateFieldParameter is an inline text/date slot. A WFInput attachment
+    # envelope is silently disconnected by the native editor in this slot.
+    return {
+        "Value": {
+            "string": "\ufffc",
+            "attachmentsByRange": {"{0, 1}": output_reference(output_uuid, "Dates")},
+        },
+        "WFSerializationType": "WFTextTokenString",
     }
 
 
 def quantity(output_uuid: str, unit: str) -> dict:
     return {
-        # The documented WFQuantityFieldValue shape keeps Magnitude and Unit
-        # inside Value. Magnitude is connected to the dictionary value.
-        "Value": {"Magnitude": token(output_uuid, "Dictionary Value"), "Unit": unit},
+        # A quantity's Magnitude holds a raw output reference, not a nested
+        # WFTextTokenAttachment. See Cherri's makeQuantityFieldValue serializer.
+        "Value": {"Magnitude": output_reference(output_uuid, "Dictionary Value"), "Unit": unit},
         "WFSerializationType": "WFQuantityFieldValue",
     }
 
@@ -139,7 +152,7 @@ def build() -> dict:
                     # Health's picker is an enum. Keep this fixed so an
                     # absent/unknown payload cannot select an arbitrary type.
                     "WFWorkoutReadableActivityType": "Traditional Strength Training",
-                    "WFWorkoutDate": token(date_uuid, "Dates"),
+                    "WFWorkoutDate": date_field(date_uuid),
                     "WFWorkoutDuration": quantity(minutes_uuid, "min"),
                     "WFWorkoutCaloriesQuantity": quantity(kcal_uuid, "kcal"),
                 },
@@ -152,7 +165,7 @@ def build() -> dict:
             ),
             action(
                 "is.workflow.actions.alert",
-                {"WFAlertActionMessage": "GYM Health: pass a workout JSON object as Shortcut Input."},
+                {"WFAlertActionMessage": "Открой завершённую тренировку в GYM и нажми «Добавить в Здоровье»."},
                 "2B72D0A8-24A6-4C5B-8E12-2C7AC0B7E013",
             ),
             action(
@@ -178,9 +191,12 @@ def main() -> None:
             unsigned = Path(tmp) / "GYM-Health.unsigned.shortcut"
             shutil.copyfile(SOURCE, unsigned)
             subprocess.run(["/usr/bin/shortcuts", "sign", "--mode", "anyone", "--input", str(unsigned), "--output", str(SIGNED)], check=True)
+        DOWNLOAD.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(SIGNED, DOWNLOAD)
         metadata = {
             "source": {"file": SOURCE.name, "sha256": hashlib.sha256(SOURCE.read_bytes()).hexdigest()},
             "signed": {"file": SIGNED.name, "sha256": hashlib.sha256(SIGNED.read_bytes()).hexdigest()},
+            "download": {"file": DOWNLOAD.relative_to(PUBLIC).as_posix(), "sha256": hashlib.sha256(DOWNLOAD.read_bytes()).hexdigest()},
         }
         INTEGRITY.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {SOURCE}")

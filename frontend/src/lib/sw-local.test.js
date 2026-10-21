@@ -78,10 +78,10 @@ describe('local service worker', () => {
     const w = worker({ fetchImpl: async () => { throw new TypeError('offline') } })
     const cache = await w.caches.open('gym-local-%2FGYM%2F-__BUILD__')
     await cache.put(ORIGIN + '/GYM/index.html', new Response('<html>offline app</html>'))
-    await cache.put(ORIGIN + '/GYM/GYM-Health.shortcut', new Response('AEA1-signed-shortcut', {
+    await cache.put(ORIGIN + '/GYM/shortcuts/v2/GYM-Health.shortcut', new Response('AEA1-signed-shortcut', {
       headers: { 'content-type': 'application/octet-stream' },
     }))
-    const request = event('/GYM/GYM-Health.shortcut', { mode: 'navigate' })
+    const request = event('/GYM/shortcuts/v2/GYM-Health.shortcut', { mode: 'navigate' })
     w.listeners.fetch(request)
     const response = await request.response
     expect(await response.text()).toBe('AEA1-signed-shortcut')

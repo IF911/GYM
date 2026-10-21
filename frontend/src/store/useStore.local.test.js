@@ -18,7 +18,7 @@ describe('local PWA diary', () => {
     await useStore.getState().boot()
     const w = { id: 'health-fixture', d: '2026-10-21', start: Date.UTC(2026, 9, 21, 10), end: Date.UTC(2026, 9, 21, 11), bw: 80,
       entries: [{ id: '0025', sets: [{ w: 60, r: 8, done: true }] }] }
-    useStore.getState().update(s => { s.workouts = [w]; s.localHealth = { shortcutInstalled: true } })
+    useStore.getState().update(s => { s.workouts = [w]; s.localHealth = { shortcutInstalled: true, shortcutRevision: 2 } })
     const openUrl = vi.fn(url => {
       expect(url).toMatch(/^shortcuts:\/\/run-shortcut\?/)
       expect(JSON.parse(localStorage.getItem('gym_state_v1')).localHealth.exports[healthWorkoutKey(w)].status).toBe('pending')
@@ -100,7 +100,7 @@ describe('local PWA diary', () => {
       s.workouts.push(workout)
       s.bodyweight.push({ d: '2026-10-20', v: 75 })
       s.localEnergy = { weightKg: 80, byWorkout: { 'workout:local-workout': { intensity: 'moderate', weightKg: 80 } } }
-      s.localHealth = { shortcutInstalled: true, exports: { 'workout:local-workout': { status: 'pending', payload: { id: 'synthetic' } } } }
+      s.localHealth = { shortcutInstalled: true, shortcutRevision: 2, exports: { 'workout:local-workout': { status: 'pending', payload: { id: 'synthetic' } } } }
     })
     const backup = JSON.parse(JSON.stringify(useStore.getState().S))
     expect(JSON.parse(localStorage.getItem('gym_state_v1')).workouts).toEqual(backup.workouts)

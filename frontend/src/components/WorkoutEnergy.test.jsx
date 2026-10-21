@@ -26,6 +26,9 @@ vi.mock('../store/useStore.js', () => {
 })
 vi.mock('../lib/i18n.js', () => ({ getLang: () => 'ru', useLang: () => {} }))
 vi.mock('../lib/health-shortcut.js', () => ({
+  HEALTH_SHORTCUT_FILE: 'shortcuts/v2/GYM-Health.shortcut',
+  HEALTH_SHORTCUT_REVISION: 2,
+  healthShortcutReady: S => !!S?.localHealth?.shortcutInstalled && S.localHealth.shortcutRevision >= 2,
   healthWorkoutKey: w => w.id || 'workout-key',
   dispatchHealthExport: (...args) => mocks.dispatch(...args),
 }), { virtual: true })
@@ -98,9 +101,10 @@ describe('WorkoutEnergy', () => {
     expect(button('Добавить в Здоровье')).toBeTruthy()
     act(() => button('Добавить в Здоровье').click())
     expect(host.textContent).toContain('добавь команду')
-    expect(host.querySelector('a').href).toContain('/GYM/GYM-Health.shortcut')
+    expect(host.querySelector('a').href).toContain('/GYM/shortcuts/v2/GYM-Health.shortcut')
     act(() => button('Я добавил команду').click())
     expect(mocks.S.localHealth.shortcutInstalled).toBe(true)
+    expect(mocks.S.localHealth.shortcutRevision).toBe(2)
     render(completed({ d: '2023-01-02' }))
     act(() => button('Добавить в Здоровье').click())
     expect(mocks.dispatch).toHaveBeenCalledTimes(1)
@@ -118,5 +122,20 @@ describe('WorkoutEnergy', () => {
     expect(host.textContent).toContain('Отмечено как добавленное')
     act(() => button('Не добавилось').click())
     expect(host.textContent).toContain('может создать дубликат')
+  })
+
+  it('guides replacement of an old shortcut before retrying without clearing the pending record', () => {
+    mocks.S.bodyweight = [{ d: '2023-01-01', w: 80 }]
+    mocks.S.localHealth = { shortcutInstalled: true, exports: { w1: { status: 'pending' } } }
+    render(completed({ d: '2023-01-02' }))
+    act(() => button('Не добавилось').click())
+    expect(host.textContent).toContain('Нужна обновлённая команда')
+    expect(button('Передать повторно').disabled).toBe(true)
+    act(() => button('Я добавил команду').click())
+    render(completed({ d: '2023-01-02' }))
+    expect(button('Передать повторно').disabled).toBe(false)
+    expect(mocks.S.localHealth.shortcutRevision).toBe(2)
+    expect(mocks.S.localHealth.exports.w1.status).toBe('pending')
+    expect(mocks.dispatch).not.toHaveBeenCalled()
   })
 })

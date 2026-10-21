@@ -23,6 +23,7 @@ const protectedFiles = new Set([
   'frontend/src/components/WorkoutEnergy.jsx', 'frontend/src/components/WorkoutEnergy.test.jsx',
   'frontend/public/GYM-Health.shortcut', 'frontend/public/GYM-Health.shortcut.plist',
   'frontend/public/GYM-Health.integrity.json',
+  'frontend/public/shortcuts/v2/GYM-Health.shortcut',
   'scripts/build-health-shortcut.py', 'scripts/build-health-shortcut.test.py',
 ])
 export function isProtected(file) {

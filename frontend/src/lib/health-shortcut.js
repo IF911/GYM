@@ -3,7 +3,11 @@
 import { hasCompletedWork } from './workout-model.js'
 
 export const HEALTH_SHORTCUT_NAME = 'GYM-Health'
-export const HEALTH_SHORTCUT_FILE = 'GYM-Health.shortcut'
+// A fresh static path avoids reinstalling the broken v1 file from Safari's cache.
+export const HEALTH_SHORTCUT_FILE = 'shortcuts/v2/GYM-Health.shortcut'
+export const HEALTH_SHORTCUT_REVISION = 2
+export const healthShortcutReady = state => !!state?.localHealth?.shortcutInstalled &&
+  state.localHealth.shortcutRevision >= HEALTH_SHORTCUT_REVISION
 
 const ms = value => Number.isFinite(value) && value > 0 ? (value < 1e11 ? value * 1000 : value) : NaN
 
@@ -54,21 +58,25 @@ const readLocalState = () => {
 }
 
 export function dispatchHealthExport({ workout, estimate, state, update, readPersisted = readLocalState,
-  openUrl = url => window.location.assign(url), now = Date.now() }) {
+  openUrl = url => window.location.assign(url), now = Date.now(), retry = false }) {
   const key = healthWorkoutKey(workout)
-  if (state?.localHealth?.exports?.[key]) throw new Error('already-sent')
-  if (!state?.localHealth?.shortcutInstalled) throw new Error('shortcut-not-installed')
+  const previous = state?.localHealth?.exports?.[key]
+  if (previous && !retry) throw new Error('already-sent')
+  if (!healthShortcutReady(state)) throw new Error('shortcut-not-installed')
   const payload = buildHealthPayload(workout, estimate)
   const url = healthShortcutUrl(payload)
-  const record = { status: 'pending', payload, at: now }
+  const attempt = Number.isSafeInteger(previous?.attempt) && previous.attempt >= 0 ? previous.attempt + 1 : 1
+  const record = { status: 'pending', payload, at: now, attempt }
   update(s => {
-    if (s.localHealth?.exports?.[key]) throw new Error('already-sent')
+    if (s.localHealth?.exports?.[key] && !retry) throw new Error('already-sent')
+    // Explicit retry replaces the marker in one update. Never delete it first:
+    // a failed save must keep the prior uncertain dispatch recorded on the phone.
     s.localHealth = { ...s.localHealth, exports: { ...s.localHealth?.exports, [key]: record } }
   })
   // Save-before-open prevents a fast second tap or a resumed PWA from silently adding twice.
   // If browser storage cannot retain the marker, do not launch an external write.
   const saved = readPersisted()?.localHealth?.exports?.[key]
-  if (saved?.status !== 'pending' || saved.payload?.id !== payload.id) throw new Error('not-persisted')
+  if (saved?.status !== 'pending' || saved.payload?.id !== payload.id || saved.at !== record.at || saved.attempt !== attempt) throw new Error('not-persisted')
   openUrl(url)
   return payload
 }

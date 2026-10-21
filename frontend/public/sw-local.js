@@ -60,7 +60,7 @@ async function installShell() {
   const html = await index.text()
   const refs = [...new Set([...html.matchAll(/(?:src|href)="([^"]+)"/g)].map(m => m[1]))]
     .filter(ref => /\.(?:js|css|png|svg|webmanifest|json)(?:\?|$)/.test(ref))
-  const files = [...new Set(['./index.html', './GYM-Health.shortcut', ...refs, ...lazyAssets()])]
+  const files = [...new Set(['./index.html', './GYM-Health.shortcut', './shortcuts/v2/GYM-Health.shortcut', ...refs, ...lazyAssets()])]
   await Promise.all(files.map(async ref => {
     const url = localUrl(ref)
     if (!url) return

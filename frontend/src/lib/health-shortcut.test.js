@@ -6,7 +6,7 @@ const workout = () => ({ id: 'workout-1', d: '2026-10-21', start: Date.UTC(2026,
   bw: 80, name: 'Private routine', note: 'Private health note', entries: [{ id: '0025', sets: [{ w: 60, r: 8, done: true }] }] })
 const fixture = () => {
   const w = workout(), estimate = estimateWorkoutCalories(w)
-  const state = { workouts: [w], routines: [{ id: 'kept' }], localHealth: { shortcutInstalled: true } }
+  const state = { workouts: [w], routines: [{ id: 'kept' }], localHealth: { shortcutInstalled: true, shortcutRevision: 2 } }
   const openUrl = vi.fn()
   return { workout: w, estimate, state, update: fn => fn(state), readPersisted: () => structuredClone(state), openUrl }
 }
@@ -43,6 +43,45 @@ describe('local Apple Health hand-off', () => {
     const f = fixture()
     expect(() => dispatchHealthExport({ ...f, readPersisted: () => ({}) })).toThrow('not-persisted')
     expect(f.openUrl).not.toHaveBeenCalled()
+  })
+
+  it('requires replacement of the broken v1 shortcut before a new hand-off', () => {
+    const f = fixture()
+    delete f.state.localHealth.shortcutRevision
+    expect(() => dispatchHealthExport(f)).toThrow('shortcut-not-installed')
+    f.state.localHealth.shortcutRevision = 1
+    expect(() => dispatchHealthExport(f)).toThrow('shortcut-not-installed')
+    expect(f.openUrl).not.toHaveBeenCalled()
+    expect(f.state.localHealth.exports).toBeUndefined()
+    expect(f.state.workouts).toEqual([f.workout])
+  })
+
+  it('replaces an explicit retry marker atomically and retains a marker when saving fails', () => {
+    for (const saveWorks of [true, false]) {
+      const f = fixture(), key = healthWorkoutKey(f.workout)
+      // An unchanged workout has the same payload id, even when the clock is
+      // unchanged too. Read-back must distinguish attempts, not just payloads.
+      const oldRecord = { status: 'pending', payload: buildHealthPayload(f.workout, f.estimate), at: 1, attempt: 1 }
+      f.state.localHealth.exports = { [key]: structuredClone(oldRecord) }
+      const oldSavedState = structuredClone(f.state)
+      const update = vi.fn(fn => {
+        expect(f.state.localHealth.exports[key]).toEqual(oldRecord)
+        fn(f.state)
+      })
+      const options = { ...f, update, retry: true, now: 1, readPersisted: () => saveWorks ? structuredClone(f.state) : oldSavedState }
+      if (saveWorks) {
+        dispatchHealthExport(options)
+        expect(f.openUrl).toHaveBeenCalledOnce()
+        expect(() => dispatchHealthExport(f)).toThrow('already-sent')
+      } else {
+        expect(() => dispatchHealthExport(options)).toThrow('not-persisted')
+        expect(f.openUrl).not.toHaveBeenCalled()
+        expect(oldSavedState.localHealth.exports[key]).toEqual(oldRecord)
+      }
+      expect(update).toHaveBeenCalledOnce()
+      expect(f.state.localHealth.exports[key].status).toBe('pending')
+      expect(f.state.workouts).toEqual([f.workout])
+    }
   })
 
   it('requires a completed valid estimate and installed shortcut, preserving an old diary on error', () => {

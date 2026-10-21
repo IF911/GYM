@@ -13,6 +13,7 @@ SCRIPT = ROOT / "scripts" / "build-health-shortcut.py"
 SOURCE = ROOT / "frontend" / "public" / "GYM-Health.shortcut.plist"
 SIGNED = ROOT / "frontend" / "public" / "GYM-Health.shortcut"
 INTEGRITY = ROOT / "frontend" / "public" / "GYM-Health.integrity.json"
+DOWNLOAD = ROOT / "frontend" / "public" / "shortcuts" / "v2" / "GYM-Health.shortcut"
 
 
 class HealthShortcutArtifactTest(unittest.TestCase):
@@ -37,6 +38,9 @@ class HealthShortcutArtifactTest(unittest.TestCase):
         self.assertEqual(metadata["source"]["sha256"], hashlib.sha256(SOURCE.read_bytes()).hexdigest())
         self.assertEqual(metadata["signed"]["sha256"], hashlib.sha256(SIGNED.read_bytes()).hexdigest())
         self.assertEqual(SIGNED.read_bytes()[:4], b"AEA1")
+        self.assertEqual(metadata["download"]["file"], "shortcuts/v2/GYM-Health.shortcut")
+        self.assertEqual(metadata["download"]["sha256"], hashlib.sha256(DOWNLOAD.read_bytes()).hexdigest())
+        self.assertEqual(DOWNLOAD.read_bytes(), SIGNED.read_bytes())
 
     def test_health_chain_and_explicit_input(self):
         self.assertEqual(self.ids[1], "is.workflow.actions.detect.dictionary")
@@ -59,11 +63,40 @@ class HealthShortcutArtifactTest(unittest.TestCase):
     def test_dynamic_health_fields_are_wired_to_dictionary_values(self):
         log = self.actions[self.ids.index("is.workflow.actions.health.workout.log")]["WFWorkflowActionParameters"]
         self.assertEqual(log["WFWorkoutReadableActivityType"], "Traditional Strength Training")
-        self.assertEqual(log["WFWorkoutDate"]["Value"]["OutputName"], "Dates")
+        self.assertEqual(log["WFWorkoutDate"]["Value"]["attachmentsByRange"]["{0, 1}"]["OutputName"], "Dates")
         for key, unit in (("WFWorkoutDuration", "min"), ("WFWorkoutCaloriesQuantity", "kcal")):
             value = log[key]["Value"]
             self.assertEqual(value["Unit"], unit)
-            self.assertEqual(value["Magnitude"]["Value"]["OutputName"], "Dictionary Value")
+            self.assertEqual(value["Magnitude"]["OutputName"], "Dictionary Value")
+
+    def test_quantity_fields_resolve_raw_action_outputs_without_an_attachment_envelope(self):
+        # Cherri's makeQuantityFieldValue -> variableValueWithSerialization(var, "")
+        # writes the raw output token here. The extra envelope imported on iPhone
+        # as the red "Unknown Variable" reported on 2026-10-21.
+        # https://github.com/electrikmilk/cherri/blob/main/action.go
+        # https://github.com/electrikmilk/cherri/blob/main/shortcutgen.go
+        producers = {a["WFWorkflowActionParameters"]["UUID"]: a for a in self.actions}
+        log = self.actions[self.ids.index("is.workflow.actions.health.workout.log")]["WFWorkflowActionParameters"]
+        for field, key in (("WFWorkoutDuration", "minutes"), ("WFWorkoutCaloriesQuantity", "activeKcal")):
+            scalar = log[field]["Value"]["Magnitude"]
+            self.assertEqual(scalar.get("Type"), "ActionOutput", "quantity imported as Unknown Variable")
+            self.assertNotIn("Value", scalar)
+            self.assertNotIn("WFSerializationType", scalar)
+            producer = producers[scalar["OutputUUID"]]
+            self.assertEqual(producer["WFWorkflowActionParameters"]["WFDictionaryKey"], key)
+        self.assertNotIn("WFWorkoutDistanceQuantity", log)
+
+    def test_workout_date_uses_an_inline_date_field_token(self):
+        # WFDateFieldParameter is a text/date field, rather than a WFInput slot.
+        # Compare the native date-field export in aont/c182357d1dad0f6ca2932a54654aa3c1.
+        log = self.actions[self.ids.index("is.workflow.actions.health.workout.log")]["WFWorkflowActionParameters"]
+        date = log["WFWorkoutDate"]
+        self.assertEqual(date["WFSerializationType"], "WFTextTokenString")
+        self.assertEqual(date["Value"]["string"], "\ufffc")
+        reference = date["Value"]["attachmentsByRange"]["{0, 1}"]
+        self.assertEqual(reference["Type"], "ActionOutput")
+        producer = next(a for a in self.actions if a["WFWorkflowActionParameters"]["UUID"] == reference["OutputUUID"])
+        self.assertEqual(producer["WFWorkflowActionIdentifier"], "is.workflow.actions.detect.date")
 
 
 if __name__ == "__main__":

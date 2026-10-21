@@ -3,7 +3,7 @@ import { getLang, useLang } from '../lib/i18n.js'
 import { convertBodyWeight } from '../lib/units.js'
 import { hasCompletedWork } from '../lib/workout-model.js'
 import { estimateWorkoutCalories } from '../lib/workout-calories.js'
-import { healthWorkoutKey, dispatchHealthExport } from '../lib/health-shortcut.js'
+import { healthWorkoutKey, dispatchHealthExport, HEALTH_SHORTCUT_FILE, HEALTH_SHORTCUT_REVISION, healthShortcutReady } from '../lib/health-shortcut.js'
 import { useStore } from '../store/useStore.js'
 import { Button } from './ui.jsx'
 
@@ -72,6 +72,7 @@ const copy = {
     present: 'Тренировка есть в Здоровье', added: 'Отмечено как добавленное', retry: 'Не добавилось — повторить', warning: 'Повторная передача может создать дубликат.', repeat: 'Передать повторно',
     unsupported: 'Передача доступна на iPhone/iPad', intensity: 'Интенсивность', light: 'Спокойная', moderate: 'Обычная, с паузами', vigorous: 'Интенсивная, короткие паузы', kcal: 'ккал',
     error: 'Не удалось открыть команду. Проверь, что она установлена с именем GYM-Health.', storageError: 'Не удалось сохранить отметку передачи на телефоне. Команда не запущена.',
+    replace: 'Нужна обновлённая команда GYM-Health. Замени прежнюю команду файлом по ссылке ниже, сохрани имя GYM-Health, затем нажми «Я добавил команду».',
   },
   en: {
     title: 'Estimated expenditure', subtitle: 'Active calories above resting expenditure. This is an estimate from time and weight, not a measurement.',
@@ -81,6 +82,7 @@ const copy = {
     present: 'Workout is in Health', added: 'Marked as added', retry: 'Did not add — try again', warning: 'Retrying may create a duplicate.', repeat: 'Send again',
     unsupported: 'Transfer is available on iPhone/iPad', intensity: 'Intensity', light: 'Light', moderate: 'Moderate, with rests', vigorous: 'Vigorous, short rests', kcal: 'kcal',
     error: 'Could not open the shortcut. Check that it is installed as GYM-Health.', storageError: 'Could not save the transfer marker on this phone. The shortcut was not launched.',
+    replace: 'An updated GYM-Health shortcut is required. Replace the previous shortcut with the file below, keep the name GYM-Health, then tap “I added the shortcut”.',
   },
 }
 
@@ -115,26 +117,24 @@ export default function WorkoutEnergy({ w }) {
   const invalidReason = !cardioOnly && (!hasWork || !durationOK)
   const ledger = key ? S?.localHealth?.exports?.[key] : null
   const apple = appleDevice()
-  const installed = !!S?.localHealth?.shortcutInstalled
+  const installed = healthShortcutReady(S)
 
   const remember = (value, field = 'weightKg') => {
     if (field === 'intensity') setEnergyPreference(update, key, { intensity: value })
     else setEnergyPreference(update, key, { weightKg: value, globalWeightKg: value })
   }
-  const setup = () => update(s => { s.localHealth = { ...(s.localHealth || {}), shortcutInstalled: true } })
+  const setup = () => update(s => { s.localHealth = { ...(s.localHealth || {}), shortcutInstalled: true, shortcutRevision: HEALTH_SHORTCUT_REVISION } })
   const send = retry => {
     if (!estimate || !apple || !installed || lock.current || (ledger && !retry)) return
     lock.current = true
     try {
-      if (retry && key) update(s => {
-        if (s.localHealth?.exports) delete s.localHealth.exports[key]
-      })
       const latest = useStore.getState()
       dispatchHealthExport({
         workout: w,
         estimate,
         state: latest.S,
         update: latest.update,
+        retry,
       })
       setRetryOpen(false); setExportError(null)
     } catch (error) {
@@ -172,8 +172,8 @@ export default function WorkoutEnergy({ w }) {
     </details>
     {!apple && <div className="muted small">{text.unsupported}</div>}
     {apple && estimate && !invalidReason && !ledger && <Button variant="primary" disabled={lock.current} onClick={() => installed ? send(false) : setSetupOpen(true)}>{text.send}</Button>}
-    {apple && !installed && setupOpen && <div className="energy-setup"><div className="muted small">{text.setup}</div>
-      <a href={new URL('./GYM-Health.shortcut', window.location.href).href} target="_blank" rel="noopener">{text.install}</a>
+    {apple && !installed && setupOpen && <div className="energy-setup"><div className="muted small">{S?.localHealth?.shortcutInstalled ? text.replace : text.setup}</div>
+      <a href={new URL('./' + HEALTH_SHORTCUT_FILE, window.location.href).href} target="_blank" rel="noopener">{text.install}</a>
       <Button size="sm" onClick={() => { setup(); setSetupOpen(false) }}>{text.installed}</Button>
     </div>}
     {exportError && <p role="alert" className="small muted">{exportError === 'not-persisted' ? text.storageError : text.error}</p>}
@@ -181,8 +181,10 @@ export default function WorkoutEnergy({ w }) {
     {ledger?.status === 'confirmed' && <div className="energy-status">{text.added}</div>}
     {ledger && <div className="energy-retry"><Button size="sm" onClick={() => setRetryOpen(v => !v)}>{text.retry}</Button>
       {retryOpen && <div><div className="muted small">{text.warning}</div>
-        <a href={new URL('./GYM-Health.shortcut', window.location.href).href} target="_blank" rel="noopener">{text.install}</a>
-        <Button size="sm" onClick={() => send(true)}>{text.repeat}</Button></div>}
+        {!installed && <div className="muted small">{text.replace}</div>}
+        <a href={new URL('./' + HEALTH_SHORTCUT_FILE, window.location.href).href} target="_blank" rel="noopener">{text.install}</a>
+        {!installed && <Button size="sm" onClick={setup}>{text.installed}</Button>}
+        <Button size="sm" disabled={!installed} onClick={() => send(true)}>{text.repeat}</Button></div>}
     </div>}
   </section>
 }

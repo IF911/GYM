@@ -1,10 +1,14 @@
 {
+  "download": {
+    "file": "shortcuts/v2/GYM-Health.shortcut",
+    "sha256": "36f673aaf6e979db91370ea6eee6c6b960675c5b905c9c8befd113f0be951925"
+  },
   "signed": {
     "file": "GYM-Health.shortcut",
-    "sha256": "5b67185b65fffbb92bb38c38925d2982adc27267d1f520c26232ac5f0b04023a"
+    "sha256": "36f673aaf6e979db91370ea6eee6c6b960675c5b905c9c8befd113f0be951925"
   },
   "source": {
     "file": "GYM-Health.shortcut.plist",
-    "sha256": "30b73c32dc57cf7c264c9be17b62e6e3bac5d9be8ffc99fb5f14324df13d47c8"
+    "sha256": "bead405d12b58a826f206b40a54123b345dad4a3fd03b3d31891333cfb5725c0"
   }
 }
