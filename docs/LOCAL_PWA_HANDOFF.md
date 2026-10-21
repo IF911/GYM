@@ -49,8 +49,17 @@ Build local успешен: 6554 stills / 6554 animations. Mobile smoke 390×844
 честный статус, offline калории и JSON backup round-trip. Upgrade smoke сохранил историю,
 активную тренировку, незаконченный ввод до перезапуска, программы, вес, custom exercise и media.
 Во всех browser сценариях 0 внешних/API/write requests и page errors. Health native action не запускался.
-Полный suite: 417 файлов / 5152 теста — PASS. Публикация выполняется. Новых credentials нет, признаков компрометации
-нет, ротация не требуется. Откат кода не очищает дневник; установленную команду iPhone обновляет
+Полный suite: 417 файлов / 5152 теста — PASS. Исправление опубликовано из
+`9902e0969172bee95e355897f854c4e25243b7d3`; Pages
+[39630565228](https://github.com/IF911/GYM/actions/runs/39630565228) — success.
+Live отдаёт точный `index-B1Wx0y8_.js`, SW, source plist, metadata и оба подписанных файла;
+SHA-256 v2 — `36f673aaf6e979db91370ea6eee6c6b960675c5b905c9c8befd113f0be951925`.
+Все 7574 файла source archive прочитаны и совпадают с опубликованными исходниками. Live mobile
+smoke повторно прошёл: download v2, ручная замена старого setup-флага, сохранение pending,
+offline расчёт/backup round-trip и summary; 0 внешних/API/write requests и page errors.
+Открытый этап: владелец переустанавливает v2 на iPhone и подтверждает нативную запись.
+Новых credentials нет, признаков компрометации нет, ротация не требуется.
+Откат web-кода — revert `9902e096` и штатный Pages release. Он не очищает дневник; установленную команду iPhone обновляет
 сам владелец. Старый файл первого выпуска возвращать не рекомендуется из-за подтверждённой ошибки.
 
 ## Оценка расхода и передача в Apple Health: 2026-10-21
