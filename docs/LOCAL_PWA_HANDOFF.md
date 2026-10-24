@@ -51,9 +51,23 @@ reload, PlanLink offline, LOCAL settings/updater и Health v2. Реальный 
 удалил искусственную программу жестом и восстановил её через Undo, 0 page errors/API/external writes.
 Все 10 workflow YAML разобраны, `git diff --check` пройден.
 
-Этапы перед завершением: commit/push, Pages и upstream verification под Node 24,
-проверка live archive/байтов/поведения.
-Откат — обычный revert security commit и штатный Pages release; он вернёт старые tooling
+Security commit `f4b89cc669569628b8015a31855ef983d5e5502f` отправлен обычным push в main.
+[Pages 40094079147](https://github.com/IF911/GYM/actions/runs/40094079147) — success:
+чистая установка, полный audit/native consumers, полный suite, shortcut/locales/fatigue,
+сборка и deploy под Node 24. [Upstream verification 40094079139](https://github.com/IF911/GYM/actions/runs/40094079139)
+— success: prepare/validate/report прошли, promote корректно пропущен для verify.
+Новая security gate прошла и на Linux runner, без исключения dev dependencies.
+
+Live проверен после deploy: 27 статических файлов побайтно совпадают с проверенными,
+весь опубликованный source archive — 7645 уникальных файлов, каждый hash совпал с релизом.
+В чистом mobile browser на рабочем HTTPS origin подтверждены ru default, русские описание
+и шаги после offline reload, PlanLink offline, LOCAL settings/updater, offline калории и Health v2;
+0 external/API/write requests и page errors. HTML/JS/CSS/SW остались теми же, что до исправления
+инструментов, поэтому отдельный restart/новая миграция дневника не требуются.
+
+Обязательных незавершённых этапов этого security-выпуска нет. Последующий documentation
+commit фиксирует результаты; опубликованные исходники и код соответствуют `f4b89cc6`.
+Откат — `git revert f4b89cc6` и штатный Pages release; он вернёт старые tooling
 зависимости, поэтому не является устранением уязвимостей. Origin и ключи дневника не меняются.
 Реальные тренировки и данные телефона не читались; проверки используют искусственный дневник.
 Физический iPhone/Safari, выполнение Health и полный native archive остаются отдельной проверкой;
