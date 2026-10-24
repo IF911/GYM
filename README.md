@@ -153,12 +153,18 @@ iOS/Safari с WebCrypto и Compression Streams; импорт файла дост
 
 ```sh
 npm ci
+npm run check:security
 npm test
 node --test ../scripts/upstream-sync.test.mjs
 node scripts/check-locales.mjs
 npm run build:local
 python3 ../scripts/build-health-shortcut.test.py
 ```
+
+Полный аудит зависимостей, включая инструменты сборки и тестирования, и реальные
+проверки совместимости native tooling выполняются командой `check:security`.
+Она обязательна и в публикации, и при upstream-обновлении. Исправления и причины
+scoped overrides описаны в [docs/DEPENDENCY_SECURITY.md](docs/DEPENDENCY_SECURITY.md).
 
 `frontend/dist/` — готовый статический сайт. Workflow **GYM local PWA** публикует
 его в GitHub Pages после успешных проверок. При первом запуске в настройках

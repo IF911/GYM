@@ -92,6 +92,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npm run check:security
           npm test -- --config vite.config.js
           node scripts/check-locales.mjs
           npm run test:fatigue-probe

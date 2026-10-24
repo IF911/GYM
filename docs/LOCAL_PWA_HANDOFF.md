@@ -4,6 +4,62 @@
 `DuarteSantos8/openGym@7a3ace53c5e910c2185f22df803726c5838a99ae` (1.4.2).
 История upstream сохранена. Рабочая копия: `work/gym`.
 
+## Исправление 12 npm-уязвимостей: 2026-10-24
+
+Пользователь разрешил исправление всех 12 npm-уязвимостей, проверки и публикацию с
+сохранением локального режима, переводов, доработок и дневника. База — `1dd0ed8c`.
+Полный audit: **12 → 0** (critical 1 → 0, high 5 → 0, moderate 6 → 0).
+Runtime audit `--omit=dev`: также 0. Оба результата получены после чистой `npm ci`.
+Уязвимые пакеты не исключались из audit, инструменты native/тестирования не удалялись.
+
+Четыре прямые dev dependencies обновлены: Vite 8.1.6, Vitest/coverage 4.1.12,
+happy-dom 21.0.4. Scoped overrides переводят assets на root CLI 8.5.3 и sharp 0.35.5,
+xcode — на uuid 11.1.1. В дереве больше нет вложенного CLI 5/tar 6; CLI использует tar
+7.5.22. Все прямые production dependencies сохранили прежние версии. Подробности,
+первичные источники и причины разрешения зависимостей: [DEPENDENCY_SECURITY.md](DEPENDENCY_SECURITY.md).
+
+`check:security` закреплён в обоих workflows: полный audit и проверки реальных consumers
+на synthetic tar/Xcode/PNG fixtures. Новый скрипт и команда защищены updater от замены.
+Проверены extraction, UUID, parse/write/reparse проекта и размеры PNG. Никакие source assets
+или native проекты при smoke не изменяются.
+
+happy-dom 21 реализует Web Animations, которые не следуют синхронному продвижению Vitest
+fake timers. Первый полный прогон показал 8 неуспешных проверок и 8 AbortError в трёх swipe
+suites. Исправлено только их тестовое управление анимациями: локальный virtual-time mock
+сохранён в `src/test/swipe-animation.js`. Assertions удаления/Undo/RTL не ослаблены.
+Production `use-swipe-row.js`, остальной исполняемый код `frontend/src`, хранилище и privacy
+не менялись. Русские packs/review/UI translations и оба подписанных Health v2 файла
+побайтно совпадают с предыдущим выпуском.
+
+| Проверка | Результат перед выпуском |
+|---|---|
+| Чистая установка и полный audit | npm ci PASS; 0 во всех severity |
+| Реальные consumers overrides | PASS под Node 24.22.1 / npm 11.21.1 |
+| Полный frontend suite | 463 files / 5656 tests PASS, 0 unhandled errors |
+| Updater guard, включая security script/command | 11 tests PASS |
+| Health shortcut builder/integrity | 7 tests PASS |
+| Переводы | 18 locales / 2413 keys PASS; 5632 exercise packs и 92 notes сохранены |
+| Fatigue/history probes | 108000 + 1800 comparisons PASS |
+
+Local build под Node 24 прошла: 6554 stills / 6554 animations. Исполняемые HTML/JS/CSS/SW
+совпадают с предыдущим выпуском, поэтому browser upgrade принял ту же сборку без нового
+controllerchange или баннера. Проверка reload/deploy сохранила историю, активную тренировку,
+3 программы, вес, собственное упражнение, 8 bytes IndexedDB media, калории, Health markers и язык.
+JSON export и offline import прошли, 0 external/API/write requests и page errors.
+Отдельный mobile smoke подтвердил русский default, описание и 5 шагов техники после offline
+reload, PlanLink offline, LOCAL settings/updater и Health v2. Реальный Chrome без test mock
+удалил искусственную программу жестом и восстановил её через Undo, 0 page errors/API/external writes.
+Все 10 workflow YAML разобраны, `git diff --check` пройден.
+
+Этапы перед завершением: commit/push, Pages и upstream verification под Node 24,
+проверка live archive/байтов/поведения.
+Откат — обычный revert security commit и штатный Pages release; он вернёт старые tooling
+зависимости, поэтому не является устранением уязвимостей. Origin и ключи дневника не меняются.
+Реальные тренировки и данные телефона не читались; проверки используют искусственный дневник.
+Физический iPhone/Safari, выполнение Health и полный native archive остаются отдельной проверкой;
+этот выпуск публикует статическую PWA. Признаков компрометации credentials не обнаружено,
+новые credentials не создавались, ротация не требуется.
+
 ## Ручное совмещение openGym 1.4.2: 2026-10-24
 
 Пользователь явно разрешил ручное совмещение, проверки и публикацию с сохранением дневника,
@@ -70,10 +126,10 @@ offline калории и Health v2. 0 внешних/API/write requests и page
 Откат кода не восстанавливает удалённое хранилище телефона; обычный JSON/ZIP backup остаётся полезен.
 
 Опциональный backlog: физический iPhone/Safari и реальное выполнение Health v2 требуют проверки
-владельцем. npm audit сообщает 12 проблем build/test/native-tooling (6 moderate / 5 high / 1 critical),
+владельцем. На момент того выпуска npm audit сообщал 12 проблем build/test/native-tooling (6 moderate / 5 high / 1 critical),
 включая tar в Capacitor CLI; все отмеченные пакеты — dev dependencies и не входят в статическую PWA.
-Автоматический audit fix/major update не выполнялся в этом merge; нужен отдельный совместимый
-update tooling. Уязвимости не считаются устранёнными прохождением тестов.
+Автоматический audit fix/major update не выполнялся в том merge; все 12 проблем устранены
+последующим security update, описанным выше. Уязвимости не считаются устранёнными прохождением тестов.
 Новые credentials не создавались, признаков компрометации не обнаружено; ротация не требуется.
 
 ## Исправление неизвестных переменных команды Health: 2026-10-21

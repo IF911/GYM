@@ -188,6 +188,14 @@ Settings → Pages → Source: GitHub Actions. Для бесплатной пу�
 `IF911/GYM`: код и материалы доступны всем, дневник каждого пользователя остаётся на его
 устройстве. Сборка запускается на push в `main` и вручную из Actions.
 
+## Проверка зависимостей перед публикацией
+
+`npm run check:security` проверяет полный npm audit, включая dev dependencies,
+и совместимость native tooling на временных искусственных файлах. Обе проверки
+обязательны в Pages и upstream validation. Причины overrides и точные команды —
+в [DEPENDENCY_SECURITY.md](DEPENDENCY_SECURITY.md). Они не меняют формат и адрес
+хранилища GYM, русские тексты или установленную команду Health.
+
 ## Автоматическое обновление upstream
 
 Отдельный workflow `upstream-sync.yml` проверяет upstream ежедневно в 02:17 UTC (05:17 Москва).

@@ -11,6 +11,7 @@ import { closeOpenRow } from '../lib/use-swipe-row.js'
 import { restoreRoutine, routineSnapshot, deleteRoutine } from '../lib/routines.js'
 import Plan, { deleteRoutineWithUndo, takeOutOfLoop } from './Plan.jsx'
 import { chooseFixedWeek, saveRotation, scheduleModeOf } from '../lib/rotation.js'
+import { installSwipeAnimationMock } from '../test/swipe-animation.js'
 
 const nav = vi.fn()
 vi.mock('react-router-dom', () => ({ useNavigate: () => nav }))
@@ -25,7 +26,7 @@ vi.mock('../sheets.jsx', () => ({
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const clone = value => JSON.parse(JSON.stringify(value))
 const routine = (id, name) => ({ id, name, emoji: null, ex: [{ id: '0025' }] })
-let host, root, widthSpy
+let host, root, widthSpy, restoreAnimations
 
 function mount(view, extra = {}) {
   localStorage.setItem('gym_plan_view', view)
@@ -58,6 +59,7 @@ function swipe(target, x0, x1) {
 const undo = () => act(() => useUI.getState().runToastAction())
 
 beforeEach(() => {
+  restoreAnimations = installSwipeAnimationMock()
   vi.useFakeTimers()
   nav.mockClear(); confirmSheet.mockClear()
   document.documentElement.dir = 'ltr'
@@ -70,6 +72,7 @@ afterEach(() => {
   act(() => root.unmount()); host.remove()
   localStorage.removeItem('gym_plan_view')
   widthSpy.mockRestore()
+  restoreAnimations?.()
   vi.clearAllTimers(); vi.useRealTimers()
 })
 

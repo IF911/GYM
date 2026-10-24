@@ -7,6 +7,7 @@ import Workout, { deleteActiveSet, undoDeleteSet, copyActiveSet, removeActiveExe
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { closeOpenRow } from '../lib/use-swipe-row.js'
+import { installSwipeAnimationMock } from '../test/swipe-animation.js'
 
 // Swipe on sets (v1.3.11): swipe toward the start removes a set with an Undo, toward the end
 // copies it. These cover the store paths the swipe, the set menu and the Undo share, the guards
@@ -21,7 +22,7 @@ const row = (w, done = false, extra = {}) => ({ w, r: 8, done, ...extra })
 const entry = (id, sets, extra = {}) => ({ id, target: { sets: sets.length, reps: 8 }, sets, ...extra })
 
 let root
-let container
+let container, restoreAnimations
 
 function setActive(entries, { cur = 0, wc, hints = { swipeSets: true }, editing = false } = {}) {
   const S = clone(DEF)
@@ -60,6 +61,7 @@ function swipe(target, x0, x1, { dy = 0, pointerType = 'touch', clickAfter = tru
 }
 
 beforeEach(() => {
+  restoreAnimations = installSwipeAnimationMock()
   _resetHintQuiet()
   vi.useFakeTimers()
   localStorage.clear()
@@ -80,6 +82,7 @@ afterEach(() => {
   useUI.getState().stopWork()
   vi.clearAllTimers()
   vi.useRealTimers()
+  restoreAnimations?.()
   document.documentElement.dir = 'ltr'
 })
 

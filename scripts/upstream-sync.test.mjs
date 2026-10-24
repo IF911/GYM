@@ -47,7 +47,7 @@ function fixtureRoot() {
   writeFileSync(join(upstream, '.github', 'workflows', 'pages.yml'), 'name: base\n')
   mkdirSync(join(upstream, 'frontend'))
   writeFileSync(join(upstream, 'frontend', 'package.json'), JSON.stringify({ version: '1.0.0', scripts: {
-    test: 'vitest run', 'build:local': 'node scripts/build-local.mjs', 'test:fatigue-probe': 'node fatigue.mjs'
+    test: 'vitest run', 'build:local': 'node scripts/build-local.mjs', 'test:fatigue-probe': 'node fatigue.mjs', 'check:security': 'node security.mjs'
   } }, null, 2) + '\n')
   const base = commit(upstream, 'base')
   git(root, ['clone', upstream, cwd])
@@ -200,7 +200,7 @@ test('local diary, backup, network boundaries and the automation itself are prot
     'frontend/src/lib/local-pwa-update.js', 'frontend/src/components/LocalPwaUpdate.jsx',
     'frontend/src/lib/health-shortcut.js', 'frontend/src/components/WorkoutEnergy.jsx', 'frontend/public/GYM-Health.shortcut',
     'frontend/public/shortcuts/v2/GYM-Health.shortcut',
-    'frontend/scripts/check-local-upgrade.mjs', 'scripts/upstream-sync.mjs', 'NOTICE.md']) {
+    'frontend/scripts/check-local-upgrade.mjs', 'frontend/scripts/check-security-tooling.mjs', 'scripts/upstream-sync.mjs', 'NOTICE.md']) {
     assert.ok(isProtected(file), file)
   }
   for (const file of ['catalogue/i18n/ru.json', 'frontend/src/views/Stats.jsx', 'docs/FAQ.md']) {
@@ -232,12 +232,12 @@ test('a blockage creates one assigned issue and repeating it does not post again
 })
 
 test('version bumps may merge but changing mandatory verification commands is blocked', t => {
-  for (const changeCommand of [false, true]) {
+  for (const changeCommand of [null, 'build:local', 'check:security']) {
     const f = fixtureRoot()
     t.after(() => rmSync(f.root, { recursive: true, force: true }))
     const file = join(f.upstream, 'frontend', 'package.json')
     const pkg = JSON.parse(readFileSync(file, 'utf8'))
-    if (changeCommand) pkg.scripts['build:local'] = 'vite build'
+    if (changeCommand) pkg.scripts[changeCommand] = 'untrusted command'
     else pkg.version = '1.1.0'
     writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n')
     commit(f.upstream, 'package update')

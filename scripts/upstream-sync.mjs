@@ -12,6 +12,7 @@ const protectedFiles = new Set([
   'LICENSE', 'NOTICE.md', 'catalogue/media/NOTICE.md', '.gitmodules', '.gitattributes',
   'frontend/index.html', 'frontend/vite.config.js', 'frontend/public/manifest.json',
   'frontend/public/sw-local.js', 'frontend/scripts/build-local.mjs',
+  'frontend/scripts/check-security-tooling.mjs',
   'frontend/scripts/check-local-upgrade.mjs', 'frontend/src/main.jsx', 'frontend/src/lib/api.js',
   'frontend/src/store/useStore.js', 'frontend/src/App.jsx',
   'frontend/src/views/Settings.jsx', 'frontend/src/views/settings-pages.js',
@@ -78,7 +79,7 @@ export function prepareUpdate({ cwd = process.cwd(), outDir, upstream = UPSTREAM
   const packageBefore = JSON.parse(git(cwd, ['show', `${base}:frontend/package.json`], { allowFailure: true }).text || '{}')
   const packagePath = path.join(cwd, 'frontend/package.json')
   const packageAfter = fs.existsSync(packagePath) ? JSON.parse(fs.readFileSync(packagePath, 'utf8')) : {}
-  for (const name of ['test', 'build:local', 'test:fatigue-probe']) {
+  for (const name of ['test', 'build:local', 'test:fatigue-probe', 'check:security']) {
     if (packageBefore.scripts?.[name] !== packageAfter.scripts?.[name]) {
       git(cwd, ['merge', '--abort'])
       return resultFile(outDir, { ...result, state: 'blocked', reason: `Upstream changes the trusted ${name} command`, files: ['frontend/package.json'] })

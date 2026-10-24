@@ -20,11 +20,12 @@ import RoutineEdit, { ROUTINE_LONG_PRESS_MS, removeRoutineExercise } from './Rou
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { closeOpenRow } from '../lib/use-swipe-row.js'
+import { installSwipeAnimationMock } from '../test/swipe-animation.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const clone = value => JSON.parse(JSON.stringify(value))
 const configured = (id, extra = {}) => ({ id, mode: 'reps', sets: 3, reps: 5, weight: 0, ...extra })
-let root, host, widthSpy
+let root, host, widthSpy, restoreAnimations
 
 function mount(entries, wc) {
   const S = clone(DEF)
@@ -55,6 +56,7 @@ function swipe(target, x0, x1) {
 const undo = () => act(() => useUI.getState().runToastAction())
 
 beforeEach(() => {
+  restoreAnimations = installSwipeAnimationMock()
   vi.useFakeTimers()
   Object.values(sheets).forEach(mock => mock.mockReset())
   document.documentElement.dir = 'ltr'
@@ -65,6 +67,7 @@ afterEach(() => {
   closeOpenRow(true)
   act(() => root.unmount()); host.remove()
   widthSpy.mockRestore()
+  restoreAnimations?.()
   vi.clearAllTimers(); vi.useRealTimers()
 })
 
