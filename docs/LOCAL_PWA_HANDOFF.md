@@ -48,10 +48,25 @@ Browser upgrade на 390×844 сохранил все проверяемые д�
 Все 10 workflow YAML разобраны; лишние пустые строки в новых upstream-файлах удалены для
 прохождения `git diff --check`, без изменения поведения.
 
-Этапы перед завершением: push merge commit, успешные Pages и upstream verification,
-сверка live assets и source archive.
+Релиз `344452d58760fdcc4fbe3f7740d73606e226f264` отправлен обычным push в main.
+[Pages 40091405759](https://github.com/IF911/GYM/actions/runs/40091405759) — success,
+включая полный suite, shortcut/locales/fatigue, build и deploy под Node 24.
+[Upstream verification 40091405751](https://github.com/IF911/GYM/actions/runs/40091405751)
+— success: prepare/validate/report прошли, promote пропущен для verify без новых upstream commits.
+[Issue #9](https://github.com/IF911/GYM/issues/9) закрыта автоматически с reason completed.
+Все upstream native/server jobs, в том числе новый iOS, пропущены в форке.
+
+Live `https://if911.github.io/GYM/` отдаёт точные 27 проверенных файлов выпуска: HTML,
+`index-sSVrhLvs.js`, CSS, связанные модули, SW, manifest, лицензии и обе копии shortcut v2.
+Публичный source archive проверен целиком: 7642 уникальных файла, SHA-256 каждого совпал с
+проверенными исходниками релиза. Live mobile smoke на новом synthetic профиле подтвердил ru default,
+русское описание и шаги после offline reload, PlanLink offline, LOCAL settings/updater,
+offline калории и Health v2. 0 внешних/API/write requests и page errors.
+
+Обязательных незавершённых этапов этого выпуска нет. Документационный commit после релиза
+фиксирует live результат; исполняемый код сайта соответствует `344452d5`.
 Данные телефона не используются и не передаются GitHub; проверки используют искусственный дневник.
-Откат: `git revert -m 1 <merge-SHA>` и штатный Pages release, без очистки Safari или смены origin.
+Откат: `git revert -m 1 344452d5` и штатный Pages release, без очистки Safari или смены origin.
 Откат кода не восстанавливает удалённое хранилище телефона; обычный JSON/ZIP backup остаётся полезен.
 
 Опциональный backlog: физический iPhone/Safari и реальное выполнение Health v2 требуют проверки
