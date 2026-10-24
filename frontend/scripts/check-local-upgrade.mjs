@@ -117,7 +117,10 @@ async function main(oldDir, newDir) {
     const media = { hash: 'a'.repeat(64), mime: 'image/png', size: 8, width: 1, height: 1, at: 1 }
     const state = await page.evaluate(media => {
       const s = JSON.parse(localStorage.getItem('gym_state_v1'))
-      s.bodyweight = [{ date: '2026-10-20', weight: 82 }]
+      s.bodyweight = [{ d: '2026-10-20', v: 82 }]
+      // GYM's calorie preferences and Health duplicate guards must survive an upstream upgrade.
+      s.localEnergy = { weightKg: 82, intensity: 'moderate', byWorkout: { 'workout:qa': { weightKg: 82, intensity: 'vigorous' } } }
+      s.localHealth = { shortcutInstalled: true, shortcutRevision: 2, exports: { 'workout:qa': { status: 'pending', attempt: 2, at: 1, payload: { id: 'qa-synthetic' } } } }
       s.customEx = [{ id: 'qa-custom', n: 'QA local media', bp: 'back', custom: true, media }]
       localStorage.setItem('gym_state_v1', JSON.stringify(s))
       return s
@@ -140,6 +143,9 @@ async function main(oldDir, newDir) {
     const backup = JSON.parse(await (await import('node:fs/promises')).readFile(backupPath, 'utf8'))
     assert.equal(backup.workouts.length, 1, 'JSON export lost workout')
     assert.ok(backup.customEx.some(x => x.id === 'qa-custom'), 'JSON export lost custom exercise')
+    for (const key of ['localEnergy', 'localHealth', 'lang', 'langAuto']) {
+      assert.deepEqual(backup[key], state[key], `JSON export lost ${key}`)
+    }
 
     await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
     await page.getByText('Full Body A', { exact: true }).click()
@@ -191,6 +197,9 @@ async function main(oldDir, newDir) {
     assert.deepEqual(afterUpdate.state.customEx, state.customEx, 'custom exercises changed across deployment')
     assert.deepEqual(afterUpdate.state.bodyweight, state.bodyweight, 'bodyweight changed across deployment')
     assert.deepEqual(afterUpdate.state.active, activeBeforeUpdate, 'active workout changed across deployment')
+    for (const key of ['localEnergy', 'localHealth', 'lang', 'langAuto']) {
+      assert.deepEqual(afterUpdate.state[key], state[key], `${key} changed across deployment`)
+    }
     assert.deepEqual(afterUpdate.media, mediaBytesBefore, 'IndexedDB media bytes changed across deployment')
 
     await context.setOffline(true)
@@ -208,9 +217,12 @@ async function main(oldDir, newDir) {
     const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')))
     assert.deepEqual(restored.workouts, backup.workouts, 'offline JSON import changed workouts')
     assert.ok(restored.customEx.some(x => x.id === 'qa-custom'), 'offline JSON import lost custom exercise')
+    for (const key of ['localEnergy', 'localHealth', 'lang', 'langAuto']) {
+      assert.deepEqual(restored[key], backup[key], `offline JSON import changed ${key}`)
+    }
     assertCleanRequests('upgrade check')
     assert.deepEqual(pageErrors, [], `page errors: ${JSON.stringify(pageErrors)}`)
-    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
+    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, caloriePreferencesKept: true, healthMarkersKept: true, chosenLanguageKept: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
     console.log(JSON.stringify(result, null, 2))
   } finally {
     await context?.close().catch(() => {})

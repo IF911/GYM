@@ -8,12 +8,16 @@ import { startMediaSync } from './lib/media-sync.js'
 import { startNativeKeyboard } from './lib/native-keyboard.js'
 import { startLocalPwaUpdates } from './lib/local-pwa-update.js'
 import './index.css'
+import { hideBoot } from './lib/boot.js'
 
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.
 if (LOCAL) {
   installLocalPrivacy()
   requestLocalPersistence()
 }
+// A script that dies before the app draws would otherwise leave the boot logo lifting forever.
+window.addEventListener('error', hideBoot, { once: true })
+
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
 createRoot(document.getElementById('root')).render(

@@ -1,8 +1,65 @@
 # GYM PWA: передача результата
 
-Дата: 2026-10-20. Source: `IF911/GYM`, `main`; upstream
-`DuarteSantos8/openGym@e348fc17c42c7e9a211c5972e573ad3698190ee2`.
+Дата актуализации: 2026-10-24. Source: `IF911/GYM`, `main`; upstream
+`DuarteSantos8/openGym@7a3ace53c5e910c2185f22df803726c5838a99ae` (1.4.2).
 История upstream сохранена. Рабочая копия: `work/gym`.
+
+## Ручное совмещение openGym 1.4.2: 2026-10-24
+
+Пользователь явно разрешил ручное совмещение, проверки и публикацию с сохранением дневника,
+локального режима и всех переводов. Основание — issue #9 / upstream-sync run 40073579115:
+изменены 9 защищённых путей; до merge и публикации автоматизация не дошла.
+Сохранены оба родителя истории: GYM `4bae34fe` и upstream `7a3ace53`; force push не используется.
+Ручные конфликты App/main/sheets/Settings/settings-pages совмещают upstream UI и наши LOCAL guards.
+Новый iOS workflow ограничен `DuarteSantos8/openGym` во всех jobs, как остальные native workflows.
+
+Все 5632 русских названия, описания и наборы шагов, 30709 шагов техники и файл review с 92
+uncertain source entries побайтно сохранены. 155 новых UI-ключей upstream уже переведены на русский;
+прежние 2258 значений не изменены. Русский default, осознанный выбор другого языка и offline packs
+сохранены. PlanLink, exercise-tools, локальный updater, калории, source archive и shortcut v2 сохранены.
+
+В новой upstream-ветке объединения локального backup найден и исправлен сброс полей GYM:
+`localEnergy`/`localHealth` отсутствуют в общем sync merger. Regression сначала получила
+`localEnergy === undefined`, затем прошла после сохранения полей в device merge. Карты калорий
+объединяются с приоритетом импортных значений, exports Health — с приоритетом текущих markers.
+Обычная осознанная замена backup не изменена. Установленная команда Health и дневник не мигрируют.
+
+| Сохраняемое поведение | Проверка |
+|---|---|
+| Полная русская библиотека, старые формулировки и примечания | byte comparison с GYM base, `ru-catalogue.test.js`, locale check |
+| LOCAL без аккаунта/AI/синхронизации, source/licensing, PlanLink и exercise-tools | local/store/Settings/plan-link/exercise-tools suites |
+| Объединение старого backup без потери калорий и Health markers | две новые регрессии `useStore.local.test.js` |
+| История, активная тренировка, программы, вес, медиа, prefs/Health и язык при обновлении | расширенный `check-local-upgrade.mjs` на предыдущей и новой сборке |
+| Отложенный restart по кнопке без потери ввода, offline import | тот же browser upgrade check |
+| Shortcut v2 без пересоздания, отсутствие внешних запросов | 7 builder tests, integrity и browser smoke |
+
+Локально пройдены: 463 frontend files / 5655 tests, 11 updater tests, 7 shortcut tests,
+18 locales / 2413 keys, 108000 fatigue и 1800 history comparisons. Node локальной проверки —
+22.23.4; обязательные workflows выполняют полный suite и сборку под Node 24.
+Предыдущая сборка `4bae34fe` сохранена отдельно для upgrade проверки; реальные дневники не читались.
+Browser upgrade на 390×844 сохранил все проверяемые данные, 0 external/API/write requests и page errors.
+
+Финальный mobile smoke подтвердил русский default, русские описание и 5 шагов выбранного
+упражнения после полного offline reload, offline форму PlanLink, отсутствие native Watch/AI/server
+в локальных настройках, локальный update row, offline калории и ссылку shortcut v2.
+0 external/API/write requests и page errors. Source archive: 7642 уникальных пути, содержимое
+каждого файла совпало с worktree, private/data/.env отсутствуют. SHA-256 обеих копий команды
+сохранён: `36f673aaf6e979db91370ea6eee6c6b960675c5b905c9c8befd113f0be951925`.
+Все 10 workflow YAML разобраны; лишние пустые строки в новых upstream-файлах удалены для
+прохождения `git diff --check`, без изменения поведения.
+
+Этапы перед завершением: push merge commit, успешные Pages и upstream verification,
+сверка live assets и source archive.
+Данные телефона не используются и не передаются GitHub; проверки используют искусственный дневник.
+Откат: `git revert -m 1 <merge-SHA>` и штатный Pages release, без очистки Safari или смены origin.
+Откат кода не восстанавливает удалённое хранилище телефона; обычный JSON/ZIP backup остаётся полезен.
+
+Опциональный backlog: физический iPhone/Safari и реальное выполнение Health v2 требуют проверки
+владельцем. npm audit сообщает 12 проблем build/test/native-tooling (6 moderate / 5 high / 1 critical),
+включая tar в Capacitor CLI; все отмеченные пакеты — dev dependencies и не входят в статическую PWA.
+Автоматический audit fix/major update не выполнялся в этом merge; нужен отдельный совместимый
+update tooling. Уязвимости не считаются устранёнными прохождением тестов.
+Новые credentials не создавались, признаков компрометации не обнаружено; ротация не требуется.
 
 ## Исправление неизвестных переменных команды Health: 2026-10-21
 

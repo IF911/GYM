@@ -118,6 +118,49 @@ describe('local PWA diary', () => {
     expect(reloaded.getState().user).toBeNull()
     expect(fetch).not.toHaveBeenCalled()
   })
+
+  it('keeps local energy and Health markers when merging a backup from before those fields existed', async () => {
+    await useStore.getState().boot()
+    const current = { id: 'current-workout', d: '2026-10-22', start: 1, end: 2, entries: [] }
+    const imported = { id: 'imported-workout', d: '2026-10-23', start: 3, end: 4, entries: [] }
+    useStore.getState().update(s => {
+      s.workouts = [current]
+      s.restSec = 45
+      s.localEnergy = { weightKg: 80, byWorkout: { [current.id]: { intensity: 'moderate', weightKg: 80 } } }
+      s.localHealth = {
+        shortcutInstalled: true, shortcutRevision: 2,
+        exports: { [current.id]: { status: 'pending', payload: { id: 'current' } } },
+      }
+    })
+    const backup = { ...clone(useStore.getState().S), workouts: [imported], restSec: 120 }
+    delete backup.localEnergy
+    delete backup.localHealth
+    const conflict = await useStore.getState().importConflict(backup)
+    useStore.getState().importBackup(backup, { mergeWith: conflict })
+    const S = useStore.getState().S
+    expect(S.workouts.map(w => w.id).sort()).toEqual(['current-workout', 'imported-workout'])
+    expect(S.restSec).toBe(120)
+    expect(S.localEnergy).toEqual({ weightKg: 80, byWorkout: { [current.id]: { intensity: 'moderate', weightKg: 80 } } })
+    expect(S.localHealth).toEqual({
+      shortcutInstalled: true, shortcutRevision: 2,
+      exports: { [current.id]: { status: 'pending', payload: { id: 'current' } } },
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('merges per-workout records with imported calorie choices and current Health markers', async () => {
+    await useStore.getState().boot()
+    useStore.getState().update(s => {
+      s.workouts = [{ id: 'w1', d: '2026-10-22', entries: [] }, { id: 'only-current-workout', d: '2026-10-23', entries: [] }]
+      s.localEnergy = { byWorkout: { w1: { weightKg: 80 }, onlyHere: { weightKg: 75 } } }
+      s.localHealth = { exports: { w1: { status: 'pending' }, onlyHere: { status: 'confirmed' } } }
+    })
+    const backup = { ...clone(useStore.getState().S), workouts: [{ id: 'w1', d: '2026-10-22', entries: [] }], localEnergy: { byWorkout: { w1: { weightKg: 90 }, onlyBackup: { weightKg: 70 } } }, localHealth: { exports: { w1: { status: 'retry' }, onlyBackup: { status: 'pending' } } } }
+    const conflict = await useStore.getState().importConflict(backup)
+    useStore.getState().importBackup(backup, { mergeWith: conflict })
+    expect(useStore.getState().S.localEnergy.byWorkout).toEqual({ w1: { weightKg: 90 }, onlyHere: { weightKg: 75 }, onlyBackup: { weightKg: 70 } })
+    expect(useStore.getState().S.localHealth.exports).toEqual({ w1: { status: 'pending' }, onlyHere: { status: 'confirmed' }, onlyBackup: { status: 'pending' } })
+  })
   it('refuses API, media uploads and pairing before touching a transport', async () => {
     await expect(api('/api/data', { method: 'PUT', body: 'private' })).rejects.toMatchObject({ code: 'local-only' })
     await expect(apiBlob('/api/media/hash')).rejects.toMatchObject({ code: 'local-only' })
