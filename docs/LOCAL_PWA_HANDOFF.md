@@ -1,8 +1,63 @@
 # GYM PWA: передача результата
 
-Дата актуализации: 2026-10-24. Source: `IF911/GYM`, `main`; upstream
-`DuarteSantos8/openGym@7a3ace53c5e910c2185f22df803726c5838a99ae` (1.4.2).
+Дата актуализации: 2026-10-26. Source: `IF911/GYM`, `main`; upstream
+`DuarteSantos8/openGym@08eabf4f480f43fd789592577463cca1b504976e` (1.4.2).
 История upstream сохранена. Рабочая копия: `work/gym`.
+
+## Исправление календарной зависимости автопроверки: 2026-10-26
+
+Пользователь разрешил оценить новые изменения и добавить полезное с сохранением локальных
+доработок. Три новых коммита автора меняют только issue/PR templates, CONTRIBUTING и FAQ.
+Они приняты отдельным merge `7e9adadf` с обоими родителями; новых функций приложения в них нет.
+Шесть открытых Dependabot PR оценены и не применялись: API/Docker не участвуют в LOCAL PWA,
+переход Vitest на major 5 и групповое обновление React/Vite не решают подтверждённой задачи
+этого выпуска. Чистая установка прежнего lockfile и полный security check показывают 0 уязвимостей.
+
+Основание исправления — [issue #13](https://github.com/IF911/GYM/issues/13) и
+[run 40288058463](https://github.com/IF911/GYM/actions/runs/40288058463): сборка, security и
+frontend suite прошли, но browser upgrade smoke остановился до `promote`. Ошибка локально
+воспроизведена на двух одинаковых сборках: `locator.waitFor: Timeout 30000ms exceeded`,
+ожидание checkbox `Set 1 done` после выбора Full Body A. По понедельникам название находится
+в неинтерактивной карточке Today's plan, где нужна кнопка Start Full Body A; в остальные дни
+программу можно запустить через строку Other routines. Приложение работало штатно, ошибался
+выбор fixture в тестовом скрипте.
+
+`startFixtureWorkout` выбирает точную кнопку запуска или единственную строку другой программы.
+Он используется для обеих тренировок в smoke. `GYM_UPGRADE_TEST_DATE` позволяет повторить
+конкретный день через browser clock, не останавливая таймеры. Workflow теперь выполняет полный
+smoke для понедельника и вторника при каждом запуске. Ни одна проверка сохранности данных,
+сети или ошибок страницы не убрана и не ослаблена.
+
+| Поведение / проверка | Подтверждение перед публикацией |
+|---|---|
+| Тест запускает выбранную программу в обоих разделах | Browser smoke PASS на всех 7 днях: 26.10–01.11.2026 |
+| Сохранённая и активная тренировки переживают reload | PASS во всех 7 сценариях |
+| Программы, вес, custom exercise, IndexedDB media | PASS; 3 программы и 8 bytes synthetic media сохранены |
+| Калории, Health duplicate guards и выбранный язык | PASS во всех 7 сценариях |
+| JSON export и import без сети | PASS во всех 7 сценариях |
+| Privacy / page errors | 0 external/API/write requests, 0 page errors |
+| Полный frontend suite | 463 files / 5656 tests PASS под Node 24.22.1 |
+| Security / реальные consumers overrides | 0 vulnerabilities; tar/Xcode/PNG consumers PASS |
+| Updater / Health integrity / locales | 11 tests / 7 tests / 18 locales × 2413 keys PASS |
+| Fatigue/history probes | 108000 + 1800 comparisons PASS |
+| Local build / source archive | PASS; 6554 stills + 6554 animations; все 7646 source files проверены |
+| Переход с предыдущего выпуска | PASS; HTML/JS/CSS/SW совпадают, все данные сохранены |
+| Реальная смена worker в отдельной QA-копии | PASS; controllerchange получен, незаконченный ввод и активная тренировка сохранены |
+| Синтаксис workflow и скрипта | Все 10 YAML разобраны; node --check и git diff --check PASS |
+
+Production paths `frontend/src`, `frontend/public`, package/lockfile, Vite config и `catalogue`
+побайтно сохранены относительно `2430052b`. Локальные guards, русские тексты, backup,
+защищённые ссылки, калории и Health v2 не менялись. Тесты используют только отдельный
+искусственный дневник; реальные данные телефона не читались. В полном unit suite было
+предупреждение Node `MaxListenersExceededWarning`, без failed tests или unhandled errors.
+
+Локальная проверка выпуска завершена. Доставка на этом этапе ещё не подтверждена: остаются
+commit/push, успешные Pages/upstream workflows и live-проверка. После них ниже фиксируется
+точный результат. Для отката исправления нужен
+revert его обычного commit; для документационного merge — `git revert -m 1 7e9adadf`.
+Откат кода не очищает хранилище телефона. Обязательные этапы доставки пока открыты;
+опционально остаётся проверка физического iPhone/Safari и выполнения Health v2.
+Новые credentials не создавались, признаков компрометации нет; ротация не требуется.
 
 ## Исправление 12 npm-уязвимостей: 2026-10-24
 

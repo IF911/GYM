@@ -26,6 +26,14 @@ function loadPlaywright() {
   return import('playwright')
 }
 
+async function startFixtureWorkout(page) {
+  const todayStart = page.getByRole('button', { name: 'Start Full Body A', exact: true })
+  if (await todayStart.count()) return todayStart.click()
+  const otherRoutine = page.locator('.item').filter({ has: page.getByText('Full Body A', { exact: true }) })
+  assert.equal(await otherRoutine.count(), 1, 'Full Body A fixture routine is not selectable')
+  return otherRoutine.click()
+}
+
 function staticServer(initialDir) {
   let dir = resolve(initialDir)
   const server = http.createServer((req, res) => {
@@ -77,6 +85,11 @@ async function main(oldDir, newDir) {
     browser = await chromium.launch(process.env.GYM_CHROMIUM_EXECUTABLE ? { headless: true, executablePath: process.env.GYM_CHROMIUM_EXECUTABLE } : { headless: true })
     context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3, locale: 'en-US', acceptDownloads: true })
     const page = await context.newPage()
+    if (process.env.GYM_UPGRADE_TEST_DATE) {
+      const testDate = new Date(process.env.GYM_UPGRADE_TEST_DATE)
+      assert.ok(!Number.isNaN(testDate.valueOf()), `GYM_UPGRADE_TEST_DATE is invalid: ${process.env.GYM_UPGRADE_TEST_DATE}`)
+      await page.clock.setFixedTime(testDate)
+    }
     context.on('request', req => requests.push({ method: req.method(), url: req.url() }))
     page.on('pageerror', e => pageErrors.push(e.message))
     const local = url => url.startsWith(origin)
@@ -104,7 +117,7 @@ async function main(oldDir, newDir) {
     await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
     await page.waitForURL('**/#/workout')
     await page.getByRole('heading', { name: 'Start workout', exact: true }).waitFor()
-    await page.getByText('Full Body A', { exact: true }).click()
+    await startFixtureWorkout(page)
     await page.getByRole('checkbox', { name: 'Set 1 done', exact: true }).waitFor()
     await page.locator('.setrow').first().locator('input').nth(0).fill('60')
     await page.locator('.setrow').first().locator('input').nth(1).fill('8')
@@ -148,7 +161,7 @@ async function main(oldDir, newDir) {
     }
 
     await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
-    await page.getByText('Full Body A', { exact: true }).click()
+    await startFixtureWorkout(page)
     await page.getByRole('checkbox', { name: 'Set 1 done', exact: true }).waitFor()
     await page.locator('.setrow').first().locator('input').nth(0).fill('40')
     await page.locator('.setrow').first().locator('input').nth(1).fill('6')

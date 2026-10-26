@@ -101,7 +101,11 @@ jobs:
       - name: Verify existing diary, media, backup and offline upgrade
         run: |
           cp "$RUNNER_TEMP/check-local-upgrade.mjs" frontend/scripts/check-local-upgrade.mjs
-          node frontend/scripts/check-local-upgrade.mjs "$RUNNER_TEMP/gym-previous" frontend/dist
+          # Monday selects Today's plan; Tuesday selects Other routines.
+          # Exercise both UI paths on every run, regardless of the runner's weekday.
+          for day in 2026-10-26 2026-10-27; do
+            GYM_UPGRADE_TEST_DATE="${day}T12:00:00Z" node frontend/scripts/check-local-upgrade.mjs "$RUNNER_TEMP/gym-previous" frontend/dist
+          done
 
   promote:
     needs: [prepare, validate]
