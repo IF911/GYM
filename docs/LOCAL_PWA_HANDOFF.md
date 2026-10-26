@@ -51,12 +51,24 @@ Production paths `frontend/src`, `frontend/public`, package/lockfile, Vite confi
 искусственный дневник; реальные данные телефона не читались. В полном unit suite было
 предупреждение Node `MaxListenersExceededWarning`, без failed tests или unhandled errors.
 
-Локальная проверка выпуска завершена. Доставка на этом этапе ещё не подтверждена: остаются
-commit/push, успешные Pages/upstream workflows и live-проверка. После них ниже фиксируется
-точный результат. Для отката исправления нужен
-revert его обычного commit; для документационного merge — `git revert -m 1 7e9adadf`.
-Откат кода не очищает хранилище телефона. Обязательные этапы доставки пока открыты;
-опционально остаётся проверка физического iPhone/Safari и выполнения Health v2.
+Исправление `83887d32a8c3b56483cb92734c48fb4970ae1601` отправлено обычным push в `main`.
+[Pages 40297589221](https://github.com/IF911/GYM/actions/runs/40297589221) — success:
+build и deploy прошли. [Upstream verification 40297589199](https://github.com/IF911/GYM/actions/runs/40297589199)
+— success: prepare, validate с обеими датами и report прошли; promote корректно пропущен
+для verify без новых изменений автора. Автоматика закрыла issue #13 как completed.
+
+После deploy 30 статических файлов live побайтно совпали с проверенным выпуском, весь
+публичный архив прочитан: 7646 уникальных source files, SHA-256 каждого совпал с release.
+HTML/JS/CSS/SW совпадают и с предыдущим выпуском. Live mobile smoke в отдельном чистом
+Chromium подтвердил сохранение тренировки и активной сессии, 3 программ, веса, custom exercise,
+8 bytes media, калорий, Health markers и языка; JSON export и offline import прошли,
+0 external/API/write requests и page errors. Реальные данные телефона не использовались.
+
+Обязательных незавершённых этапов нет. Последующий documentation commit фиксирует delivery;
+опубликованный source archive и исправление соответствуют `83887d32`. Для отката исправления
+— `git revert 83887d32`; для документационного merge — `git revert -m 1 7e9adadf`.
+Откат кода не очищает хранилище телефона. Опционально остаются рассмотренные Dependabot PR,
+проверка физического iPhone/Safari и реальное выполнение Health v2.
 Новые credentials не создавались, признаков компрометации нет; ротация не требуется.
 
 ## Исправление 12 npm-уязвимостей: 2026-10-24
