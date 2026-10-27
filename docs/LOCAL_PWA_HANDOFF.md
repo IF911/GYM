@@ -77,13 +77,28 @@ account/server handover не смешивает владельцев. Новые
 Основной merge `a581962ebc2bd6daa729f129dcadde7ccb0561af` отправлен в main.
 [Pages 40500009373](https://github.com/IF911/GYM/actions/runs/40500009373) и
 [upstream verification 40500009346](https://github.com/IF911/GYM/actions/runs/40500009346)
-завершились success. Итоговый stack/plate UI fix проходит отдельную публикацию; перед
-завершением остаются сверка его source archive, Pages и live mobile smoke.
-Для полного отката сначала отменить последующий UI fix, затем `git revert -m 1 a581962eb`
-и выполнить штатную публикацию;
-origin и storage key не меняются, очистка Safari не требуется. Обязательные этапы доставки
-пока открыты; физический iPhone/Safari и реальная запись Health v2 остаются опциональной
-проверкой владельца. Реальные дневники/backup не читались и не отправлялись в GitHub.
+завершились success. Итоговый stack/plate UI fix `a86d4a598ff709b1a9b4e4c0d04c010e48e9cb21`
+также отправлен обычным push; [Pages 40502370232](https://github.com/IF911/GYM/actions/runs/40502370232)
+завершился success после полного suite, security, Health, locales и fatigue checks.
+UI-only commit не запускает отдельный upstream verification по path filter; merge проверен
+run 40500009346. Автоматика закрыла [issue #14](https://github.com/IF911/GYM/issues/14) как completed.
+
+После публикации 156 live static files побайтно совпали с проверенным выпуском. Архив
+`source.tar.gz` содержит 7818 уникальных source files; SHA-256 каждого совпал с snapshot
+итогового release. Live mobile smoke в отдельном чистом Chromium подтвердил сохранение
+истории и active workout, 3 программ, веса, custom exercise, 8 bytes IndexedDB media,
+калорий, Health markers и языка. JSON export и offline JSON import прошли; external/API/write
+requests и page errors — 0. Отдельная live проверка открыла Weight stack из меню тренировки,
+задала 5 / 11.8 / 18.6 / 25.4 kg и подтвердила сохранение после offline reload; несвязанный
+plate editor скрыт. Все данные этих проверок искусственные, реальные дневники/backup
+телефона не читались и не отправлялись в GitHub.
+
+Обязательных незавершённых этапов нет. Последующий documentation commit фиксирует delivery;
+опубликованные приложение и source archive соответствуют `a86d4a598`. Физический iPhone/Safari
+и реальная запись Health v2 остаются опциональной проверкой владельца.
+Для полного отката выполнить `git revert --no-commit a86d4a598`, затем
+`git revert --no-commit -m 1 a581962eb`, создать rollback commit и выполнить штатный push
+с публикацией. Origin и storage key не меняются, очистка Safari не требуется.
 Новые credentials не создавались, признаков компрометации нет; ротация не требуется.
 
 ## Исправление календарной зависимости автопроверки: 2026-10-26
