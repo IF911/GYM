@@ -22,6 +22,11 @@ upstream workflows ограничены repository автора; наши Pages/
 
 Ручное совмещение сохраняет LOCAL boot без аккаунта, API/Beacon/media/pairing guards,
 русский default, LocalPwaUpdateBanner, `/import-plan`, инструменты нагрузки, калории и Health v2.
+Редактор ступеней веса отделён от разрешения показывать калькулятор блинов: он доступен
+для cable/lever machines в карточке, настройках и меню тренировки. Workout передаёт готовый
+plate-policy flag в sheet; legacy прямые вызовы сохраняют Off/явный opt-in и прежний editor.
+Caller regressions нажимают настоящее меню и проверяют открытый editor, включая added-load
+bodyweight. Это сохраняет наши ограничения и новую функцию автора одновременно.
 15 критических собственных файлов, включая worker, local mode, PlanLink, Health shortcut,
 calorie helpers, русские source packs/review, побайтно совпадают с базой. Generated names,
 descriptions и technique структурно сохраняют все 5632 наших значения; names/instr получили
@@ -47,7 +52,7 @@ account/server handover не смешивает владельцев. Новые
 
 | Проверка | Результат перед публикацией |
 |---|---|
-| Полный frontend suite | 559 files / 6638 tests PASS под Node 24.22.1 |
+| Полный frontend suite | 559 files / 6641 tests PASS под Node 24.22.1 |
 | Store/API/LOCAL targeted | 21 files / 185 tests PASS |
 | Plates regression + property | 49 tests PASS при PROPERTY_RUNS=2000; исходный seed replay PASS |
 | Frontend security / CLI/Xcode/PNG consumers | 0 vulnerabilities, все consumers PASS |
@@ -60,6 +65,7 @@ account/server handover не смешивает владельцев. Новые
 | Сохранность данных при upgrade | История, active, 3 программы, вес, customEx, 8 bytes IDB, calorie/Health/lang PASS |
 | Backup / privacy при upgrade | JSON export/offline import PASS; 0 external/API/write requests и page errors |
 | Реальная новая UI | CSV скачан и проверен; русская техника доступна после offline reload |
+| Stack/plate caller policy | 5 files / 48 tests PASS; stack, явный opt-in и added-load bodyweight сохранены |
 | Workflow safeguards | Все 11 YAML разобраны; все upstream jobs author-only |
 
 В native-tooling сохранены assets, Playwright, happy-dom 21 и scoped overrides. Lock пересоздан
@@ -68,9 +74,13 @@ account/server handover не смешивает владельцев. Новые
 в DEPENDENCY_SECURITY.md. Сборка предупреждает о размерах некоторых translation chunks
 и совместном static/dynamic import; это не ошибка сборки. Повторный полный suite зелёный.
 
-Доставка ещё не подтверждена: остаются окончательная сверка source archive, merge commit/push,
-успешные Pages и upstream verification, проверка опубликованных файлов и live mobile smoke.
-Для отката нового merge использовать `git revert -m 1 <release-SHA>` и штатную публикацию;
+Основной merge `a581962ebc2bd6daa729f129dcadde7ccb0561af` отправлен в main.
+[Pages 40500009373](https://github.com/IF911/GYM/actions/runs/40500009373) и
+[upstream verification 40500009346](https://github.com/IF911/GYM/actions/runs/40500009346)
+завершились success. Итоговый stack/plate UI fix проходит отдельную публикацию; перед
+завершением остаются сверка его source archive, Pages и live mobile smoke.
+Для полного отката сначала отменить последующий UI fix, затем `git revert -m 1 a581962eb`
+и выполнить штатную публикацию;
 origin и storage key не меняются, очистка Safari не требуется. Обязательные этапы доставки
 пока открыты; физический iPhone/Safari и реальная запись Health v2 остаются опциональной
 проверкой владельца. Реальные дневники/backup не читались и не отправлялись в GitHub.

@@ -55,8 +55,16 @@ describe('exercise weight tools call-site policy', () => {
 
   it('shows 1RM for cable work but no plate loading', () => {
     act(() => exerciseDetailSheet(EXIDX['7583']))
-    expect(h4s(renderTop())).toEqual(expect.arrayContaining(['Estimated 1RM']))
+    const host = renderTop()
+    expect(h4s(host)).toEqual(expect.arrayContaining(['Estimated 1RM', 'Weight stack']))
     expect(h4s(document.body)).not.toContain('Plate loading')
+  })
+
+  it('shows a cable machine weight stack without enabling plate loading', () => {
+    act(() => exConfigSheet(EXIDX['7583'], { sets: 3, reps: 8, weight: 20, mode: 'reps' }, vi.fn()))
+    const host = renderTop()
+    expect(text(host)).toContain('Weight stack')
+    expect(text(host)).not.toContain('Plate loading')
   })
 
   it('offers an explicit lever-machine plate opt-in and reveals the editor', () => {

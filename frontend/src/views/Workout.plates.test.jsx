@@ -21,6 +21,7 @@ const DB_BENCH = '0289'   // dumbbell bench press
 const COCOONS = '0260'    // body weight, done here with +25
 const LUNGE = '0054'      // barbell lunge — the coach runs it per side
 const BAND_PULL = '0993'  // band pull-apart (band)
+const PUSHDOWN = '0201'   // cable pushdown with a pin-selected stack
 // One pair of each — the home gym the coach plans for.
 const HOME = { 45: 1, 35: 1, 25: 1, 15: 1, 10: 1, 5: 1, 2.5: 1 }
 
@@ -176,6 +177,27 @@ describe('plate line under set rows', () => {
     act(() => sr.unmount()); sc.remove()
   })
 
+  it('the ⋯ menu keeps Plate loading for bodyweight with added load', () => {
+    mount([entry(COCOONS, [work(25)], { w: 25 })])
+    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    act(() => more.click())
+    const sc = document.createElement('div')
+    document.body.appendChild(sc)
+    const sr = createRoot(sc)
+    act(() => sr.render(useUI.getState().sheets.at(-1).render(() => {})))
+    const item = [...sc.querySelectorAll('.menu-item')].find(b => b.textContent.includes('Plate loading'))
+    expect(item).toBeTruthy()
+    act(() => item.click())
+    const detail = document.createElement('div')
+    document.body.appendChild(detail)
+    const dr = createRoot(detail)
+    act(() => dr.render(useUI.getState().sheets.at(-1).render(() => {})))
+    expect(detail.textContent).toContain('Plate loading')
+    expect(detail.textContent).toContain('Single stack')
+    act(() => dr.unmount()); detail.remove()
+    act(() => sr.unmount()); sc.remove()
+  })
+
   it('the ⋯ menu names a bar only for a bar: a machine loaded per side with its own weight reads Per side', () => {
     const MACHINE = Object.values(EXIDX).find(e => e.eq === 'leverage machine').id
     mount([entry(MACHINE, [work(145)], { w: 145 })], {
@@ -191,6 +213,30 @@ describe('plate line under set rows', () => {
     const item = [...sc.querySelectorAll('.menu-item')].find(b => b.textContent.includes('Plate loading'))
     expect(item.textContent).toContain('Per side')
     expect(item.textContent).not.toContain('Bar')
+    act(() => sr.unmount()); sc.remove()
+  })
+
+  it('the ⋯ menu opens Weight stack for a cable even when plate loading is hidden', () => {
+    mount([entry(PUSHDOWN, [work(25)], { w: 25 })])
+    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    act(() => more.click())
+    const sc = document.createElement('div')
+    document.body.appendChild(sc)
+    const sr = createRoot(sc)
+    act(() => sr.render(useUI.getState().sheets.at(-1).render(() => {})))
+    const item = [...sc.querySelectorAll('.menu-item')].find(b => b.textContent.includes('Weight stack'))
+    expect(item).toBeTruthy()
+    expect(sc.textContent).not.toContain('Plate loading')
+    act(() => item.click())
+    const sheet = useUI.getState().sheets.at(-1)
+    const detail = document.createElement('div')
+    document.body.appendChild(detail)
+    const dr = createRoot(detail)
+    act(() => dr.render(sheet.render(() => {})))
+    expect(detail.textContent).toContain('Weight stack')
+    expect(detail.textContent).not.toContain('Plate loading')
+    expect(detail.querySelector('input[aria-label="First (lb)"]')).toBeTruthy()
+    act(() => dr.unmount()); detail.remove()
     act(() => sr.unmount()); sc.remove()
   })
 

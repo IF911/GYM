@@ -938,17 +938,22 @@ function StackEditor({ ex }) {
 }
 
 // Mid-workout sheet behind the ⋯ menu's "Plate loading" — same values, same editor.
-function BarWeightSheet({ exId, cfg, close }) {
+function BarWeightSheet({ exId, cfg, facts, close }) {
   const ex = exOr(exId)
+  const bodyweight = cfg?.bodyweight === true
+  // Bare callers historically open the full editor so they can choose Off or an explicit
+  // machine/added-load opt-in. Workout passes the already-evaluated plate policy explicitly.
+  const showPlates = facts?.showPlates ?? true
+  const stack = canHaveStack(ex) && !bodyweight
   return <>
-    <h3>{t('Plate loading')}</h3>
+    <h3>{showPlates ? t('Plate loading') : stack ? t('Weight stack') : t('Plate loading')}</h3>
     <div className={`muted small ${exerciseNameClass(ex)}`} style={{ marginBottom: 12 }}>{exerciseNameFor(ex)}</div>
-    <BarWeightEditor ex={ex} cfg={cfg} extra={t('Applies to this exercise everywhere, not just this plan.')} />
-    {canHaveStack(ex) && <><h4 className="sec">{t('Weight stack')}</h4><StackEditor ex={ex} /></>}
+    {showPlates && <BarWeightEditor ex={ex} cfg={cfg} extra={t('Applies to this exercise everywhere, not just this plan.')} />}
+    {stack && <><h4 className="sec">{t('Weight stack')}</h4><StackEditor ex={ex} /></>}
     <Button variant="primary" onClick={close}>{t('Done')}</Button>
   </>
 }
-export const barWeightSheet = (exId, cfg) => ui().openSheet(close => <BarWeightSheet exId={exId} cfg={cfg} close={close} />)
+export const barWeightSheet = (exId, cfg, facts) => ui().openSheet(close => <BarWeightSheet exId={exId} cfg={cfg} facts={facts} close={close} />)
 
 // The plates you own, as pairs per size, for the profile's unit (Settings → Equipment → Plates).
 // The first edit copies the standard set into S.plates[unit] and changes one count in it, so the
@@ -1168,8 +1173,8 @@ function ExerciseDetail({ ex, close }) {
     }).plates && <>
       <h4 className="sec">{t('Plate loading')}</h4>
       <BarWeightEditor ex={ex} extra={t('You still log the total weight. This only feeds the plate line under each set.')} />
-      {canHaveStack(ex) && <><h4 className="sec">{t('Weight stack')}</h4><StackEditor ex={ex} /></>}
     </>}
+    {canHaveStack(ex) && <><h4 className="sec">{t('Weight stack')}</h4><StackEditor ex={ex} /></>}
     {/* The exercise's own default meaning of its weight (S.dbLoad), stamped like the loading
         above. A routine can still pick its own on the exercise's settings. */}
     {isBellEx(ex) && <>
@@ -2378,8 +2383,8 @@ function ExConfig({ ex, existing, onSave, onDelete, onReplace, close, routine, i
     }).plates && <>
       <h4 className="sec">{t('Plate loading')}</h4>
       <BarWeightEditor ex={ex} cfg={c} extra={t('Applies to this exercise everywhere, not just this plan.')} />
-      {canHaveStack(ex) && !bw && <><h4 className="sec">{t('Weight stack')}</h4><StackEditor ex={ex} /></>}
     </>}
+    {canHaveStack(ex) && !bw && <><h4 className="sec">{t('Weight stack')}</h4><StackEditor ex={ex} /></>}
     {leverPlateOptIn && !exerciseToolPolicy(ex, {
       mode, bodyweight: bw, loadKind: loadKindFor(st, { ...c, id: ex.id }),
       loadKindExplicit: loadKindOf(st.loadKind?.[ex.id]) != null && loadKindOf(st.loadKind?.[ex.id]) !== 'none',

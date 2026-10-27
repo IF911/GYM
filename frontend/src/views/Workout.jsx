@@ -48,7 +48,7 @@ import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit, canMoveActiveWorkoutEn
 import { nextOpenSet, workoutKeyAction } from '../lib/workout-keys.js'
 import { MUSCLE_NAME } from '../lib/muscles.js'
 import FocusView from './FocusView.jsx'
-import { withMeaning, historyAs, dbLoadFor, entryDbLoad, bellsIn, ownedWeightsFor, stepOwned } from '../lib/dumbbells.js'
+import { withMeaning, historyAs, dbLoadFor, entryDbLoad, bellsIn, ownedWeightsFor, stepOwned, canHaveStack } from '../lib/dumbbells.js'
 import { exerciseToolPolicy } from '../lib/exercise-tools.js'
 import { SeasonDeco } from '../components/Seasonal.jsx'
 
@@ -369,6 +369,9 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
     loadKindExplicit: loadKindOf(S.loadKind?.[entry.id]) != null && loadKindOf(S.loadKind?.[entry.id]) !== 'none',
   })
   const plateLoading = mode === 'reps' && !editing && platePolicy.plates
+  // A pin-selected machine stack has its own editor even when the local policy hides plate
+  // loading/calculator controls for cable and lever equipment. Keep bodyweight rows quiet.
+  const stackLoading = mode === 'reps' && !editing && !cfg.bodyweight && canHaveStack(ex)
   const base = baseWeightFor(S, entry.id)
   const loadSeq = !plateLoading || loadKind === 'none' ? [] : (() => {
     const inv = inventoryFor(S)
@@ -442,7 +445,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       { title: t('Settings'), items: [
         onProgressionSettings && { icon: 'slider', label: t('Exercise settings'), sub: guidance ? t(guidance.policyLabel) : t('Sets, reps, rest, progression'), onClick: onProgressionSettings },
         onRest && { icon: 'timer', label: t('Rest timer'), sub: restSub, onClick: onRest },
-        plateLoading && { icon: 'plate', label: t('Plate loading'), sub: loadSummary, onClick: () => barWeightSheet(entry.id, cfg) },
+        (plateLoading || stackLoading) && { icon: 'plate', label: stackLoading && !plateLoading ? t('Weight stack') : t('Plate loading'), sub: loadSummary, onClick: () => barWeightSheet(entry.id, cfg, { showPlates: plateLoading }) },
         routineUpdate && { icon: 'clipboard', label: t('Update routine'), sub: routineUpdate.sub, onClick: routineUpdate.run },
       ] },
       { title: t('Order and supersets'), items: [
