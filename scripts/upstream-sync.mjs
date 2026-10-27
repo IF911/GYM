@@ -28,8 +28,9 @@ const protectedFiles = new Set([
   'scripts/build-health-shortcut.py', 'scripts/build-health-shortcut.test.py',
 ])
 export function isProtected(file) {
+  // local.js/local-* are privacy modules; locale-* are ordinary translation tests.
   return protectedFiles.has(file) || file.startsWith('.github/workflows/') ||
-    file.startsWith('scripts/upstream-sync') || file.startsWith('frontend/src/lib/local') ||
+    file.startsWith('scripts/upstream-sync') || /^frontend\/src\/lib\/local(?:[./-]|$)/.test(file) ||
     file.startsWith('frontend/src/lib/plan-link') || file.startsWith('frontend/src/views/PlanLink') ||
     file === 'frontend/src/lib/sw-local.test.js' || file.startsWith('frontend/scripts/fixtures/local-upgrade')
 }

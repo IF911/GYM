@@ -208,6 +208,16 @@ test('local diary, backup, network boundaries and the automation itself are prot
   }
 })
 
+test('locale checks are allowed while local privacy modules remain protected', () => {
+  for (const file of ['frontend/src/lib/locale-plate-load.test.js', 'frontend/src/lib/locale-sv.test.js']) {
+    assert.equal(isProtected(file), false, file)
+  }
+  for (const file of ['frontend/src/lib/local.js', 'frontend/src/lib/local.test.js',
+    'frontend/src/lib/local-pwa-update.js', 'frontend/src/lib/local/network.js']) {
+    assert.equal(isProtected(file), true, file)
+  }
+})
+
 test('a blockage creates one assigned issue and repeating it does not post again', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'gym-report-'))
   t.after(() => rmSync(dir, { recursive: true, force: true }))

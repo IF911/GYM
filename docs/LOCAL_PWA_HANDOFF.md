@@ -1,8 +1,80 @@
 # GYM PWA: передача результата
 
-Дата актуализации: 2026-10-26. Source: `IF911/GYM`, `main`; upstream
-`DuarteSantos8/openGym@08eabf4f480f43fd789592577463cca1b504976e` (1.4.2).
+Дата актуализации: 2026-10-27. Source: `IF911/GYM`, `main`; upstream
+`DuarteSantos8/openGym@e6a95c28a6e3067bdd9b1188d5f37f448d528bd2` (1.4.3).
 История upstream сохранена. Рабочая копия: `work/gym`.
+
+## Ручное обновление до openGym 1.4.3: 2026-10-27
+
+Пользователь разрешил ручное обновление, все проверки и публикацию с сохранением наших
+правок и дневника. База GYM — `487daa9e`; автор — релизный код `922b586a` и три последующих
+документационных коммита до `e6a95c28`. Основание — issue #14 / upstream run 40469783494:
+автоматика корректно остановилась до merge из-за изменения защищённых файлов.
+Оба родителя истории сохраняются; force push и замена нашей ветки upstream не используются.
+
+Приняты функции 1.4.3: ступени веса тренажёров, быстрые запасные упражнения, CSV export,
+карта мышц программы, настройки отдыха, статистика и ускорение загрузки. Native-only
+Apple Watch/Health/GPS возможности не становятся функциями LOCAL PWA. Все jobs девяти
+upstream workflows ограничены repository автора; наши Pages/upstream workflows сохранены.
+Устаревший catalogue workflow удалён вслед за upstream, публикация русского каталога
+по-прежнему проверяется локальной сборкой и тестами. Префикс защиты `local` уточнён так,
+чтобы `locale-*` tests не считались модулями privacy; настоящие local boundaries защищены.
+
+Ручное совмещение сохраняет LOCAL boot без аккаунта, API/Beacon/media/pairing guards,
+русский default, LocalPwaUpdateBanner, `/import-plan`, инструменты нагрузки, калории и Health v2.
+15 критических собственных файлов, включая worker, local mode, PlanLink, Health shortcut,
+calorie helpers, русские source packs/review, побайтно совпадают с базой. Generated names,
+descriptions и technique структурно сохраняют все 5632 наших значения; names/instr получили
+упаковку JSON.parse из 1.4.3. Сохранены все 16 наших UI-формулировок относительно общей базы,
+новые переводы автора приняты; 19 языков содержат одинаковые 2576 ключей.
+
+Новый draft/stateJson механизм принят с прежним `gym_state_v1`. Восстановление старого backup
+теперь сохраняет GYM-only calorie/Health поля и при Replace: текущие transfer id/status
+не откатываются старой копией. Контракт active/carryActive и конвертации единиц сохранён;
+account/server handover не смешивает владельцев. Новые регрессии грузят raw состояние 1.4.2,
+проверяют draft update и обе ветки импорта без чтения реального дневника.
+
+Во время проверки исправлены два подтверждённых дефекта:
+
+- Подбор блинов: greedy exact-fit обходил минимизацию количества. Для 55 с заданным inventory
+  получалось 5 блинов вместо 25+15+15. Убран только ранний exact-fit return; cap огромного target
+  и heavy tie-break сохранены. Regression сначала RED, затем PASS; property oracle не ослаблен.
+- Offline shell: Vite удаляет CSS-only JS chunks после раннего generateBundle. Список SW включал
+  phantom `leaflet-D5ygxVXx.js`, что блокировало install. `lazyAssets` перенесён в writeBundle;
+  реальный integration build-тест сначала RED на отсутствующий файл, затем PASS. В итоговом
+  LOCAL worker 88 существующих lazy assets, все RU chunks сохранены. Браузерный переход
+  со старой версии после исправления подтверждает controllerchange и явную кнопку Update.
+
+| Проверка | Результат перед публикацией |
+|---|---|
+| Полный frontend suite | 559 files / 6638 tests PASS под Node 24.22.1 |
+| Store/API/LOCAL targeted | 21 files / 185 tests PASS |
+| Plates regression + property | 49 tests PASS при PROPERTY_RUNS=2000; исходный seed replay PASS |
+| Frontend security / CLI/Xcode/PNG consumers | 0 vulnerabilities, все consumers PASS |
+| API / MCP | 696 / 128 tests PASS; MCP plain-node import graph PASS |
+| API / MCP audit | 0 / 0 после совместимых MCP transitive fixes |
+| Updater / Health / locales | 12 / 7 tests PASS; 19 locales × 2576 keys |
+| Fatigue/history probes | 108000 + 1800 comparisons PASS |
+| Local build / media | PASS; 6554 stills и 6554 animations |
+| Upgrade 1.4.2 → 1.4.3 | PASS для понедельника и вторника, buildsEqual=false, controllerchange и Update |
+| Сохранность данных при upgrade | История, active, 3 программы, вес, customEx, 8 bytes IDB, calorie/Health/lang PASS |
+| Backup / privacy при upgrade | JSON export/offline import PASS; 0 external/API/write requests и page errors |
+| Реальная новая UI | CSV скачан и проверен; русская техника доступна после offline reload |
+| Workflow safeguards | Все 11 YAML разобраны; все upstream jobs author-only |
+
+В native-tooling сохранены assets, Playwright, happy-dom 21 и scoped overrides. Lock пересоздан
+с фиксированными прямыми версиями, чтобы сохранить tar 7.5.22; проверки не ослаблялись.
+В MCP исправлены body-parser/fast-uri; прямые диапазоны не менялись. Причины и команды —
+в DEPENDENCY_SECURITY.md. Сборка предупреждает о размерах некоторых translation chunks
+и совместном static/dynamic import; это не ошибка сборки. Повторный полный suite зелёный.
+
+Доставка ещё не подтверждена: остаются окончательная сверка source archive, merge commit/push,
+успешные Pages и upstream verification, проверка опубликованных файлов и live mobile smoke.
+Для отката нового merge использовать `git revert -m 1 <release-SHA>` и штатную публикацию;
+origin и storage key не меняются, очистка Safari не требуется. Обязательные этапы доставки
+пока открыты; физический iPhone/Safari и реальная запись Health v2 остаются опциональной
+проверкой владельца. Реальные дневники/backup не читались и не отправлялись в GitHub.
+Новые credentials не создавались, признаков компрометации нет; ротация не требуется.
 
 ## Исправление календарной зависимости автопроверки: 2026-10-26
 

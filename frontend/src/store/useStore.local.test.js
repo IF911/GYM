@@ -119,6 +119,38 @@ describe('local PWA diary', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('loads a pre-1.4.3 local diary with its running session and metadata, then saves through the draft', async () => {
+    const diary = {
+      lang: 'en', langAuto: false, unit: 'kg',
+      workouts: [{ id: 'saved', d: '2026-10-22', entries: [{ id: '0025', sets: [{ w: 60, r: 8, done: true }] }] }],
+      routines: [{ id: 'routine', name: 'Fixture plan', ex: [{ id: '0025', sets: 3, reps: 8 }] }],
+      week: { 1: 'routine' }, bodyweight: [{ d: '2026-10-22', w: 80 }],
+      customEx: [{ id: 'c-fixture', name: 'Fixture exercise', custom: true, eq: 'barbell', bp: 'chest' }],
+      active: { id: 'running', start: 1234, cur: 0, entries: [{ id: '0025', sets: [{ w: 60, r: 8, done: true }] }] },
+      localEnergy: { weightKg: 80, byWorkout: { saved: { intensity: 'moderate' } } },
+      localHealth: { shortcutInstalled: true, shortcutRevision: 2, exports: { saved: { status: 'confirmed', payload: { id: 'fixture-transfer' } } } },
+    }
+    localStorage.setItem('gym_state_v1', JSON.stringify(diary))
+    vi.resetModules()
+    const reloaded = (await import('./useStore.js')).useStore
+    await reloaded.getState().boot()
+    const before = reloaded.getState().S
+    for (const key of ['workouts', 'routines', 'week', 'bodyweight', 'customEx', 'active', 'localEnergy', 'localHealth']) expect(before[key]).toEqual(diary[key])
+    expect(before.lang).toBe('ru')
+    expect(before.volumeWarmups).toBe(false)
+    expect(before.exAliases).toEqual({})
+    reloaded.getState().update(s => { s.active.cur = 1; s.localEnergy.byWorkout.saved.intensity = 'vigorous' })
+    const after = reloaded.getState().S
+    expect(after.workouts).toBe(before.workouts)
+    expect(before.active.cur).toBe(0)
+    expect(before.localEnergy.byWorkout.saved.intensity).toBe('moderate')
+    const saved = JSON.parse(localStorage.getItem('gym_state_v1'))
+    expect(saved.active.cur).toBe(1)
+    expect(saved.localEnergy.byWorkout.saved.intensity).toBe('vigorous')
+    for (const key of ['workouts', 'routines', 'week', 'bodyweight', 'customEx', 'localHealth']) expect(saved[key]).toEqual(diary[key])
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('keeps local energy and Health markers when merging a backup from before those fields existed', async () => {
     await useStore.getState().boot()
     const current = { id: 'current-workout', d: '2026-10-22', start: 1, end: 2, entries: [] }
@@ -161,6 +193,47 @@ describe('local PWA diary', () => {
     expect(useStore.getState().S.localEnergy.byWorkout).toEqual({ w1: { weightKg: 90 }, onlyHere: { weightKg: 75 }, onlyBackup: { weightKg: 70 } })
     expect(useStore.getState().S.localHealth.exports).toEqual({ w1: { status: 'pending' }, onlyHere: { status: 'confirmed' }, onlyBackup: { status: 'pending' } })
   })
+  it.each([false, true])('keeps the running session and Health guards when restoring a backup (merge=%s)', async merge => {
+    await useStore.getState().boot()
+    const active = { id: 'running', start: 1234, cur: 0, entries: [{ id: '0025', sets: [{ w: 60, r: 8, done: true }] }] }
+    const energy = { weightKg: 80, byWorkout: { w1: { weightKg: 80 }, currentOnly: { weightKg: 75 } } }
+    const health = { shortcutInstalled: true, shortcutRevision: 2, exports: { w1: { status: 'confirmed' }, currentOnly: { status: 'pending' } } }
+    useStore.getState().update(s => {
+      s.workouts = [{ id: 'current', d: '2026-10-22', entries: [] }]
+      s.active = active
+      s.localEnergy = energy
+      s.localHealth = health
+    })
+    // A copy predating local metadata still carries the 1.4.3 additions and an older active session.
+    const backup = { ...clone(DEF), workouts: [{ id: 'imported', d: '2026-10-21', entries: [] }], active: { id: 'old-running', entries: [] }, exAliases: { '0025': ['Bench'] }, volumeWarmups: true }
+    const before = useStore.getState().S
+    const beforeJson = JSON.stringify(before)
+    const conflict = merge ? await useStore.getState().importConflict(backup) : null
+    useStore.getState().importBackup(backup, { mergeWith: conflict })
+    const S = useStore.getState().S
+    expect(S.active).toEqual(active)
+    expect(S.localEnergy).toEqual(energy)
+    expect(S.localHealth).toEqual(health)
+    expect(S.exAliases).toEqual(backup.exAliases)
+    expect(S.volumeWarmups).toBe(true)
+    expect(S.workouts.map(w => w.id).sort()).toEqual(merge ? ['current', 'imported'] : ['imported'])
+    expect(JSON.parse(localStorage.getItem('gym_state_v1')).active).toEqual(active)
+    expect(JSON.parse(localStorage.getItem('gym_state_v1')).localHealth).toEqual(health)
+    expect(JSON.stringify(before)).toBe(beforeJson)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('keeps current Health duplicate guards when replacing with an older backup of the same workout', async () => {
+    await useStore.getState().boot()
+    useStore.getState().update(s => {
+      s.workouts = [{ id: 'w1', d: '2026-10-22', entries: [] }]
+      s.localHealth = { exports: { w1: { status: 'confirmed', payload: { id: 'current-transfer' } } } }
+    })
+    const backup = { ...clone(DEF), workouts: [{ id: 'w1', d: '2026-10-22', entries: [] }], localHealth: { exports: { w1: { status: 'pending', payload: { id: 'old-transfer' } }, importedOnly: { status: 'pending' } } } }
+    useStore.getState().importBackup(backup)
+    expect(useStore.getState().S.localHealth.exports).toEqual({ w1: { status: 'confirmed', payload: { id: 'current-transfer' } }, importedOnly: { status: 'pending' } })
+  })
+
   it('refuses API, media uploads and pairing before touching a transport', async () => {
     await expect(api('/api/data', { method: 'PUT', body: 'private' })).rejects.toMatchObject({ code: 'local-only' })
     await expect(apiBlob('/api/media/hash')).rejects.toMatchObject({ code: 'local-only' })

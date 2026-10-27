@@ -74,11 +74,17 @@ describe('stored choices carry the time they were made', () => {
 })
 
 describe('plateStack', () => {
-  test('heaviest first when that lands exactly — the way a bar is loaded', () => {
+  test('the fewest plates, with heavier plates first and preferred on ties', () => {
     expect(plateStack(50, homeInv)).toEqual({ plates: [45, 5], missing: 0 })
-    expect(plateStack(60, inventoryFor({ unit: 'lb' }))).toEqual({ plates: [45, 10, 5], missing: 0 })
+    expect(plateStack(60, inventoryFor({ unit: 'lb' }))).toEqual({ plates: [35, 25], missing: 0 })
     expect(plateStack(115, inventoryFor({ unit: 'lb' }))).toEqual({ plates: [45, 45, 25], missing: 0 })
     expect(plateStack(21.25, inventoryFor({ unit: 'kg' }))).toEqual({ plates: [20, 1.25], missing: 0 })
+  })
+
+  test('an exact greedy fit still chooses the fewest plates', () => {
+    // Greedy reaches 55 with 25 + 25 + 2.5 + 1.25 + 1.25, but three plates suffice.
+    const inv = [{ w: 25, n: 2 }, { w: 15, n: 2 }, { w: 2.5, n: 1 }, { w: 1.25, n: 2 }]
+    expect(plateStack(55, inv)).toEqual({ plates: [25, 15, 15], missing: 0 })
   })
 
   test('the coach ramp on Monday\'s squat, one pair of each', () => {

@@ -5,6 +5,28 @@
 сохраняется для поддерживаемого upstream-маршрута. Данные пользователя для этих
 проверок не нужны.
 
+## Совмещение с openGym 1.4.3: 2026-10-27
+
+Приняты зависимости 1.4.3, включая React 19.3.1, Vite 8.3.5 и новые upstream helpers.
+Vite ограничен текущей minor-веткой `~8.3.4`; Vitest/coverage остаются 4.1.12,
+happy-dom — 21.0.4. Сохранены Playwright 1.62.1, `@capacitor/assets` 3.0.5 и наши
+реальные consumer checks. Удаление assets из upstream не переносится в локальный проект:
+проверка совместимости icon/Xcode/template tooling остаётся обязательной.
+
+Прежние overrides для assets/CLI, sharp 0.35.5 и xcode/uuid 11.1.1 сохранены. Дополнительно
+для CLI закреплён tar 7.5.22: upstream lock возвращал 7.5.21, а npm сохранял старое разрешение
+после добавления override. Lock пересоздан отдельно под Node 24/npm 11 с точными прежними
+прямыми версиями; затем исходные диапазоны восстановлены и выполнена чистая `npm ci`.
+Флаги `--force` и `--legacy-peer-deps` не применялись. Полный frontend audit — 0;
+распаковка настоящим CLI, Xcode parse/write/reparse и PNG generation проходят.
+
+Дополнительно проверены backend-модули релиза. API audit — 0. В MCP найдены и исправлены
+только две транзитивные зависимости: body-parser 2.4.0 и fast-uri 3.1.9, без изменения
+прямых диапазонов MCP и без включения сервера/AI в LOCAL PWA. После обновления lockfile
+MCP audit — 0, все 128 тестов и plain-node import graph проходят.
+Первичные источники: [body-parser advisory](https://github.com/advisories/GHSA-27r3-jxmh-p828),
+[fast-uri advisory](https://github.com/advisories/GHSA-w74x-v6f9-j3xg).
+
 ## Исправления от 2026-10-24
 
 Исходный полный `npm audit`: 12 уязвимых пакетов — 6 moderate, 5 high и 1 critical.

@@ -9,7 +9,7 @@
 //
 // Logged weights stay the total on the bar (or the added load). Everything here is display.
 
-import { EXIDX } from './exercises.js'
+import { exerciseOf as exOf } from './exercises.js'
 import { usesBar, barTypeWeight } from './bar.js'
 import { isBw } from './history.js'
 import { weightIncrement } from './progression.js'
@@ -31,7 +31,6 @@ export const DEFAULT_PAIRS = 6
 /** Equipment that loads a single stack rather than two sides of a bar. */
 const SINGLE_EQ = new Set(['weighted', 'sled machine'])
 
-const exOf = exOrId => (typeof exOrId === 'string' ? EXIDX[exOrId] : exOrId)
 const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0)
 const unitOf = S => (S?.unit === 'lb' ? 'lb' : 'kg')
 
@@ -108,10 +107,9 @@ const Q = 4
 const q = w => Math.round(w * Q)
 
 /**
- * Plates for `weight`, from `inv` ([{ w, n }], heaviest first). Heaviest-first greedy when that
- * lands exactly — the way a bar is loaded in practice. When greedy misses (a home gym with one
- * pair of each size, an odd inventory) the fewest plates that hit the weight exactly, biased to
- * heavier plates on ties. When nothing hits it, the closest load BELOW and what is missing.
+ * Plates for `weight`, from `inv` ([{ w, n }], heaviest first). The fewest plates that hit the
+ * weight exactly, biased to heavier plates on ties. When nothing hits it, the closest load
+ * BELOW, with the fewest plates for that load, and what is missing.
  *   → { plates: [w, …] heaviest first, missing: number }   (missing 0 = exact)
  */
 export function plateStack(weight, inv) {
@@ -131,7 +129,8 @@ export function plateStack(weight, inv) {
   // missing. The search below would only find that again, with a table as long as the target:
   // a typo like 9999 in a weight field built it on every keystroke.
   const all = items.reduce((sum, p) => sum + q(p.w) * p.n, 0)
-  if (left === 0 || target >= all) return { plates: greedy, missing: requested - (target - left) / Q }
+  if (target >= all) return { plates: greedy, missing: requested - (target - left) / Q }
+  // Even an exact greedy fit can use extra plates (55 = 25 + 15 + 15 beats 25 + 25 + change).
   // 2. exact fit with the fewest plates: f[i][s] = min plates using sizes i.. to make s
   const n = items.length
   const INF = 1e9

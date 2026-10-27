@@ -60,6 +60,7 @@ function swipe(target, x0, x1, { dy = 0, pointerType = 'touch', clickAfter = tru
   if (clickAfter) click(target)
 }
 
+
 beforeEach(() => {
   restoreAnimations = installSwipeAnimationMock()
   _resetHintQuiet()

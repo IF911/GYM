@@ -75,10 +75,7 @@ describe('the worker keeps the on-demand code too', () => {
     expect(lazyAssets(bundle)).toEqual(['./assets/de-i.js', './assets/en-g.js', './assets/en-h.js', './assets/index-a.js', './assets/index-f.css', './assets/media-ingest-b.js', './assets/ru-e.js', './assets/ru-j.js', './assets/ru-k.js'])
   })
 
-  it('the build stamps the worker with both', () => {
-    const vite = readFileSync(fileURLToPath(new URL('../../vite.config.js', import.meta.url)), 'utf8')
-    expect(vite).toMatch(/generateBundle\(_, bundle\) \{ lazy = lazyAssets\(bundle\) \}/)
-    expect(vite).toMatch(/stampSw\(readFileSync\(sw, 'utf8'\), \{ stamp, lazy \}\)/)
+  it('stamps the worker version and escapes asset filenames', () => {
     const sw = stampSw(source, { stamp: 'abc', lazy: ["./assets/it's.js"] })
     expect(sw).toContain("const CACHE = 'opengym-rt-abc'")
     expect(sw).not.toContain('__LAZY__')
