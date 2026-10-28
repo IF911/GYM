@@ -16,6 +16,7 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
 import { mergeStates, stampChange, stampWorkout } from './sync-merge.js'
+import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 
 const clone = o => JSON.parse(JSON.stringify(o))
 const EXS = ['bench', 'squat', 'dead', 'row']
@@ -53,7 +54,9 @@ function play(S0, ops, dev, log) {
     } else if ((o.k === 'set' || o.k === 'fix' || o.k === 'del') && W.length) {
       const w = W[o.pick % W.length]
       if (o.k === 'del') { next.workouts = W.filter(x => x !== w); log.push({ dev, k: 'del', id: w.id, t: wall }) }
-      else {
+      else if (o.k === 'set' || w.entries[0].sets[0].w !== o.w) {
+        // The real history editor leaves an unchanged Save's workout stamp alone. A no-op
+        // correction must not pretend to be a later edit and outrank another device's delete.
         if (o.k === 'set') w.entries[0].sets.push({ w: o.w, r: o.r })
         else w.entries[0].sets[0].w = o.w
         stampWorkout(w, wall)
@@ -81,6 +84,35 @@ const RUNS = { numRuns: Number(process.env.PROPERTY_RUNS) || 150 }
 const histories = n => fc.array(fc.array(op, { maxLength: 8 }), { minLength: n, maxLength: n })
 
 describe('merging copies of one account', () => {
+  it('models an unchanged weight correction like the real history editor, without a new workout stamp', () => {
+    const S0 = base()
+    S0.active = null
+    S0.workouts[0] = { ...S0.workouts[0], name: 'Push', routineIds: [], routineId: null,
+      entries: [{ id: '0025', sets: [{ w: 60, r: 5, done: true }], target: { mode: 'reps' }, topW: 60 }],
+      vol: 300, prs: [], _ts: 10 }
+    const real = clone(S0)
+    editCompletedSession(real, 'w0')
+    real.active.entries[0].sets[0].w = 60
+    saveWorkoutEdit(real, 100052)
+    real._ts = stampChange(S0, real, 100052)
+    const log = []
+    const generated = play(S0, [{ k: 'fix', pick: 0, w: 60 }], 2, log)
+    expect(real.workouts).toEqual(S0.workouts)
+    expect(generated.workouts).toEqual(real.workouts)
+    expect(generated._ts).toBe(real._ts)
+    expect(log).toEqual([])
+  })
+
+  it('an unchanged correction does not revive a workout deleted after another device added a set', () => {
+    // GitHub Pages seed -1750993981, path 50:2:1:1:1:2:1:2:1.
+    const A = play(base(), [{ k: 'set', pick: 0, w: 20, r: 1 }], 0, [])
+    const B = play(base(), [{ k: 'del', pick: 0 }], 1, [])
+    const C = play(base(), [{ k: 'fix', pick: 0, w: 60 }], 2, [])
+    expect(C.workouts).toEqual(base().workouts)
+    for (const M of [merge(merge(A, B), C), merge(A, merge(B, C)), merge(merge(C, A), B)]) {
+      expect(M.workouts).toEqual([])
+    }
+  })
   it('the order two copies meet in does not matter', () => {
     fc.assert(fc.property(histories(2), ([oa, ob]) => {
       const A = play(base(), oa, 0, []), B = play(base(), ob, 1, [])

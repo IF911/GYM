@@ -1,7 +1,7 @@
 # GYM PWA: передача результата
 
 Дата актуализации: 2026-10-28. Source: `IF911/GYM`, `main`; upstream
-`DuarteSantos8/openGym@e6a95c28a6e3067bdd9b1188d5f37f448d528bd2` (1.4.3).
+`DuarteSantos8/openGym@b6cfe2bbd3f099523ffbf2677438864e9a09a06f` (1.4.3).
 История upstream сохранена. Рабочая копия: `work/gym`.
 
 ## Исправление повторного баннера обновления: 2026-10-28
@@ -34,19 +34,45 @@ Updater теперь фиксирует entry и первоначальные st
 не сливались в рамках исправления баннера.
 
 Проверки перед публикацией: targeted updater/banner/settings — 3 files / 25 tests PASS,
-полный frontend — 559 files / 6642 tests PASS, security — 0 vulnerabilities и consumers PASS,
+итоговый полный frontend — 559 files / 6644 tests PASS, security — 0 vulnerabilities и consumers PASS,
 Health builder — 7 tests PASS, locales — 19 × 2576 keys, fatigue/history — 108000 + 1800
 comparisons PASS. LOCAL build прошёл. Исходный same-build browser repro теперь GREEN:
 lazy Halloween CSS загружен, manual checks и reload не возвращают ложный баннер.
 Настоящий переход со старого release прошёл с controllerchange, `deliberateUpdateUI: true`
 и `currentVersionAfterReload: true`. Сохранены история, active workout, 3 программы, вес,
 custom exercise, 8 bytes IndexedDB media, калории, Health и язык; JSON export и offline import
-прошли, external/API/write requests и page errors — 0. Публикация и live verification пока
+прошли, external/API/write requests и page errors — 0.
+
+Первый Pages run 40713725317 остановился в property suite на seed `-1750993981`, path
+`50:2:1:1:1:2:1:2:1`. Минимальный пример содержал исправление 60 kg на те же 60 kg:
+генератор ошибочно ставил новый stamp workout и таким no-op перевешивал удаление другой копии.
+Прямой вызов настоящего `editCompletedSession → saveWorkoutEdit → stampChange` подтвердил:
+workout stamp при таком Save не меняется, а profile timestamp меняется. Исправлена только
+модель no-op в property fixture; общий stampChange, распределение операций и merge oracle
+сохранены. Добавлены producer parity и минимальная regression; исходный seed replay PASS,
+6 properties × 2000 runs и 2 regressions PASS. Production merge-код не менялся.
+
+Независимый upstream validation 40713725556 прошёл полный suite и browser upgrade для обеих
+дат, после чего штатная автоматика приняла последний README-only commit автора `b6cfe2bbd`
+как `af462d7de`. Код исправления updater сохранён. [Pages 40714587452](https://github.com/IF911/GYM/actions/runs/40714587452)
+завершился success и опубликовал исправленное приложение. Test-only коррекция fixture
+проходит отдельную публикацию; финальная сверка source archive и live verification пока
 выполняются. Все тестовые записи искусственные; реальный дневник телефона не читался.
 Для отката достаточно revert коммита этого исправления
 и штатной Pages публикации; данные не откатываются и не очищаются. Новых credentials нет,
 признаков компрометации нет; ротация не требуется. Физический iPhone/Safari остаётся
 опциональной проверкой владельца.
+
+Отдельный backlog: существующая ещё до 1.4.3 неассоциативность merge при трёх независимых
+копиях одного workout. A добавляет set, B позднее удаляет workout, C ещё позднее меняет
+только note; порядок merge определяет, сохранится ли set из A при восстановлении workout
+версией C. Это воспроизведено реальными producer helpers в отдельном временном harness
+`/private/tmp/gym-sync-triage/real-note.mjs`; тот же пример падает и на upstream 1.4.2.
+Обычный LOCAL save/reload/update одной актуальной копии не затронут. Случай относится к
+конфликтам трёх копий, в том числе старых конкурентных вкладок (`joinTabs`), и требует
+отдельного изменения семантики resurrection с регрессиями. Обычный LOCAL importBackup
+использует `prefer: 'a'`, Replace не делает normal merge; данный oracle непосредственно к
+ним не относится. В hotfix updater эта логика и данные пользователя не меняются.
 
 ## Ручное обновление до openGym 1.4.3: 2026-10-27
 
