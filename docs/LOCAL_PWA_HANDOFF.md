@@ -30,8 +30,8 @@ Updater теперь фиксирует entry и первоначальные st
 `upstream/main@b6cfe2bbd` после нашей базы меняет только README и изображения. Ветка
 `release-1.4.4@b4c327afd` ещё не опубликована как stable и содержит отдельный большой набор
 новых функций; исправления этого LOCAL updater в ней нет. Android updater fix `2479b4b50`
-уже входит в нашу 1.4.3. Срочных новых upstream исправлений для GYM не найдено, эти ветки
-не сливались в рамках исправления баннера.
+уже входит в нашу 1.4.3. Срочных новых upstream исправлений для GYM не найдено; ветка
+release-1.4.4 не сливалась. README-only изменения main приняла штатная автоматика ниже.
 
 Проверки перед публикацией: targeted updater/banner/settings — 3 files / 25 tests PASS,
 итоговый полный frontend — 559 files / 6644 tests PASS, security — 0 vulnerabilities и consumers PASS,
@@ -56,10 +56,22 @@ workout stamp при таком Save не меняется, а profile timestamp
 дат, после чего штатная автоматика приняла последний README-only commit автора `b6cfe2bbd`
 как `af462d7de`. Код исправления updater сохранён. [Pages 40714587452](https://github.com/IF911/GYM/actions/runs/40714587452)
 завершился success и опубликовал исправленное приложение. Test-only коррекция fixture
-проходит отдельную публикацию; финальная сверка source archive и live verification пока
-выполняются. Все тестовые записи искусственные; реальный дневник телефона не читался.
-Для отката достаточно revert коммита этого исправления
-и штатной Pages публикации; данные не откатываются и не очищаются. Новых credentials нет,
+`45593dfd99bce10a86ae5ef8d2e2d3ad4c9d1e2a` также отправлена и опубликована:
+[Pages 40715724531](https://github.com/IF911/GYM/actions/runs/40715724531) — success,
+включая полный suite, security, Health, locales, fatigue, build и deploy.
+
+Финальная live сверка подтвердила SHA-256 всех 156 static files и 7822 уникальных source
+files в публичном archive; все совпадают с release `45593dfd9`. Повторный live mobile smoke
+после этой публикации подтвердил `currentVersionAfterReload: true`: баннер не возвращается
+после reload и manual check при загруженной Halloween теме. История, active, программы,
+вес, custom media, калории, Health markers и язык сохраняются; export/offline import PASS,
+external/API/write requests и page errors — 0. Все тестовые записи искусственные; реальный
+дневник телефона не читался и не отправлялся в GitHub.
+
+Обязательных незавершённых этапов hotfix нет. Следующий documentation commit фиксирует
+delivery; опубликованное приложение и archive соответствуют `45593dfd9`.
+Для отката updater выполнить `git revert 4218f19e4` и штатную Pages публикацию;
+test-only коррекция `45593dfd9` может оставаться. Данные не откатываются и не очищаются. Новых credentials нет,
 признаков компрометации нет; ротация не требуется. Физический iPhone/Safari остаётся
 опциональной проверкой владельца.
 
