@@ -71,6 +71,13 @@ export function createLocalPwaUpdater(deps = {}) {
     return entryUrl(script?.src, doc)
   }
 
+  // Capture the document's shell before React loads theme/screen styles and before
+  // registration yields. Those lazy styles belong to this build too, but are not
+  // listed as entry stylesheets in the worker's cached index.html.
+  const pageEntry = currentEntry()
+  const pageStyles = [...(doc?.querySelectorAll?.('link[rel="stylesheet"][href]') || [])]
+    .map(link => entryUrl(link.href, doc)).filter(Boolean).sort()
+
   const queryShell = async () => {
     const controller = nav?.serviceWorker?.controller
     if (!controller || !MessageChannelImpl) return null
@@ -94,12 +101,9 @@ export function createLocalPwaUpdater(deps = {}) {
   const compareShell = async () => {
     const info = await queryShell()
     if (!info?.entry) return false
-    const current = currentEntry()
     const served = entryUrl(info.entry, doc)
-    const styles = [...(doc?.querySelectorAll?.('link[rel="stylesheet"][href]') || [])]
-      .map(link => entryUrl(link.href, doc)).filter(Boolean).sort()
     const servedStyles = Array.isArray(info.styles) ? info.styles.map(ref => entryUrl(ref, doc)).filter(Boolean).sort() : null
-    return Boolean(current && served && (current !== served || servedStyles && JSON.stringify(styles) !== JSON.stringify(servedStyles)))
+    return Boolean(pageEntry && served && (pageEntry !== served || servedStyles && JSON.stringify(pageStyles) !== JSON.stringify(servedStyles)))
   }
 
   const waitForInstallation = async (worker) => {

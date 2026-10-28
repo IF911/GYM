@@ -1,8 +1,52 @@
 # GYM PWA: передача результата
 
-Дата актуализации: 2026-10-27. Source: `IF911/GYM`, `main`; upstream
+Дата актуализации: 2026-10-28. Source: `IF911/GYM`, `main`; upstream
 `DuarteSantos8/openGym@e6a95c28a6e3067bdd9b1188d5f37f448d528bd2` (1.4.3).
 История upstream сохранена. Рабочая копия: `work/gym`.
+
+## Исправление повторного баннера обновления: 2026-10-28
+
+Пользователь сообщил, что «Обновить» не убирает баннер на iPhone, и разрешил исправление
+с сохранением наших доработок и дневника. На текущем release `a86d4a598` точный симптом
+воспроизведён в отдельном mobile Chrome: manual check → Update → настоящий reload → manual
+check → повторный баннер. Entry документа и worker совпадают, но document styles содержат
+`index.css` и lazy `halloween.css`, тогда как HTML shell worker содержит только `index.css`.
+Прежний compareShell принимал поздние стили за обновление; кнопка штатно перезагружала ту же
+версию. Искусственный дневник при RED-проверке сохранился.
+
+Updater теперь фиксирует entry и первоначальные stylesheet при создании; main запускает его
+до React render, async registration и lazy theme/screen imports. Проверка CSS-only обновлений
+сохранена, имена CSS не фильтруются. Worker, storage key, дневник и backup format не меняются.
+Новая unit regression сначала RED (`available: true` вместо `false`), после исправления PASS.
+
+В browser smoke устранено слепое место: наличие updater больше не определяется только по
+изменяемой надписи Check for GYM updates. Когда старый клиент уже пишет Update GYM, тест
+по-прежнему использует его настоящую кнопку. После reload и загрузки lazy CSS smoke вручную
+проверяет актуальность и требует отсутствия баннера. Раньше такой сценарий мог пройти через
+собственный page.reload(), а повторный ложный баннер оставался незамеченным.
+
+Проверка upstream на 28 октября: stable release по-прежнему
+[v1.4.3](https://github.com/DuarteSantos8/openGym/releases/tag/v1.4.3).
+`upstream/main@b6cfe2bbd` после нашей базы меняет только README и изображения. Ветка
+`release-1.4.4@b4c327afd` ещё не опубликована как stable и содержит отдельный большой набор
+новых функций; исправления этого LOCAL updater в ней нет. Android updater fix `2479b4b50`
+уже входит в нашу 1.4.3. Срочных новых upstream исправлений для GYM не найдено, эти ветки
+не сливались в рамках исправления баннера.
+
+Проверки перед публикацией: targeted updater/banner/settings — 3 files / 25 tests PASS,
+полный frontend — 559 files / 6642 tests PASS, security — 0 vulnerabilities и consumers PASS,
+Health builder — 7 tests PASS, locales — 19 × 2576 keys, fatigue/history — 108000 + 1800
+comparisons PASS. LOCAL build прошёл. Исходный same-build browser repro теперь GREEN:
+lazy Halloween CSS загружен, manual checks и reload не возвращают ложный баннер.
+Настоящий переход со старого release прошёл с controllerchange, `deliberateUpdateUI: true`
+и `currentVersionAfterReload: true`. Сохранены история, active workout, 3 программы, вес,
+custom exercise, 8 bytes IndexedDB media, калории, Health и язык; JSON export и offline import
+прошли, external/API/write requests и page errors — 0. Публикация и live verification пока
+выполняются. Все тестовые записи искусственные; реальный дневник телефона не читался.
+Для отката достаточно revert коммита этого исправления
+и штатной Pages публикации; данные не откатываются и не очищаются. Новых credentials нет,
+признаков компрометации нет; ротация не требуется. Физический iPhone/Safari остаётся
+опциональной проверкой владельца.
 
 ## Ручное обновление до openGym 1.4.3: 2026-10-27
 

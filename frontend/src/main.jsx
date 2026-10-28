@@ -25,6 +25,14 @@ handOverFromLaunchScreen()
 
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
+// Snapshot the HTML shell before React can load a seasonal theme or another lazy
+// stylesheet. Later styles must not be mistaken for an available app update.
+const webServiceWorker = !MOBILE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+if (webServiceWorker) {
+  if (LOCAL) startLocalPwaUpdates()
+  else navigator.serviceWorker.register('sw.js').catch(() => {})
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode><App /></StrictMode>
 )
@@ -38,9 +46,7 @@ startMediaSync(useStore)
 startNativeKeyboard()
 
 // Not in the mobile build: the native shell already serves everything from disk.
-if (!MOBILE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  if (LOCAL) startLocalPwaUpdates()
-  else navigator.serviceWorker.register('sw.js').catch(() => {})
+if (webServiceWorker) {
   // The plan's exercise media, kept by the worker for a workout opened without a network (#281).
   // It only fetches ahead while the page runs as the installed app; a tab keeps what it has shown.
   import('./lib/media-prefetch.js').then(m => m.startMediaPrefetch(useStore)).catch(() => {})

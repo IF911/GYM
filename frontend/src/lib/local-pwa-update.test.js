@@ -63,6 +63,27 @@ describe('local PWA updater', () => {
     expect(updater.getSnapshot().available).toBe(true)
   })
 
+  it('ignores styles loaded by seasonal themes or screens after boot, including on later checks', async () => {
+    const entry = 'https://gym.example/GYM/assets/index-old.js'
+    const css = 'https://gym.example/GYM/assets/old.css'
+    const b = browser({ entry, styles: [css] })
+    const links = [{ href: css }]
+    b.document.querySelectorAll = () => links
+    const updater = createLocalPwaUpdater(b)
+    // A lazy theme can load while registration/update is still pending. It belongs to
+    // this installed build and must not turn a successful check into a reload loop.
+    b.registration.update.mockImplementationOnce(async () => {
+      links.push({ href: 'https://gym.example/GYM/assets/halloween-theme.css' })
+    })
+    await updater.start()
+    expect(updater.getSnapshot()).toEqual({ checking: false, available: false, error: null })
+
+    links.push({ href: 'https://gym.example/GYM/assets/leaflet-map.css' })
+    await updater.check({ manual: true })
+    await updater.check({ manual: true })
+    expect(updater.getSnapshot()).toEqual({ checking: false, available: false, error: null })
+  })
+
   it('sets checking immediately for a manual check and waits for activation', async () => {
     const b = browser()
     b.registration.update.mockImplementationOnce(async () => { b.registration.installing = b.installing })

@@ -169,7 +169,9 @@ async function main(oldDir, newDir) {
     const activeBeforeUpdate = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')).active)
     assert.ok(activeBeforeUpdate, 'second workout must still be active during update')
     await page.goto(origin + '#/settings/about', { waitUntil: 'domcontentloaded' })
-    const hasUpdateUI = await page.getByText('Check for GYM updates', { exact: true }).count() > 0
+    // An older client can already offer an update (including a false theme-CSS
+    // warning). Its changed title must not make this test bypass the real button.
+    const hasUpdateUI = await page.getByText(/^(Check for GYM updates|Checking for GYM updates…|Update GYM)$/).count() > 0
     const oldModuleSrc = await page.locator('script[type="module"]').first().getAttribute('src')
     await page.evaluate(() => {
       // Unsaved DOM state must survive receiving the update. The app offers a reload; it
@@ -200,6 +202,16 @@ async function main(oldDir, newDir) {
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     const loadedModuleSrc = await page.locator('script[type="module"]').first().getAttribute('src')
     assert.equal(new URL(loadedModuleSrc, origin).href, new URL(newModuleSrc, origin).href, 'page loaded a module script other than new-index script')
+    // Exercise a later check after lazy theme/screen CSS has loaded as well. A
+    // successful reload must not offer the same installed version over and over.
+    const currentCheck = page.getByText('Check for GYM updates', { exact: true })
+    await page.goto(origin + '#/settings/about', { waitUntil: 'networkidle' })
+    await currentCheck.waitFor()
+    await currentCheck.click()
+    await page.getByText('The app is up to date.', { exact: true }).waitFor()
+    assert.equal(await page.locator('.local-update-bar').count(), 0, 'current build offered another update after reload and manual check')
+    await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
+    await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     const afterUpdate = await page.evaluate(async () => {
       const s = JSON.parse(localStorage.getItem('gym_state_v1') || '{}')
       const q = await new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const x = r.result.transaction('blobs').objectStore('blobs').get('a'.repeat(64)); x.onsuccess = () => resolve(x.result); x.onerror = () => reject(x.error) }; r.onerror = () => reject(r.error) })
@@ -235,7 +247,7 @@ async function main(oldDir, newDir) {
     }
     assertCleanRequests('upgrade check')
     assert.deepEqual(pageErrors, [], `page errors: ${JSON.stringify(pageErrors)}`)
-    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, caloriePreferencesKept: true, healthMarkersKept: true, chosenLanguageKept: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
+    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, currentVersionAfterReload: true, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, caloriePreferencesKept: true, healthMarkersKept: true, chosenLanguageKept: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
     console.log(JSON.stringify(result, null, 2))
   } finally {
     await context?.close().catch(() => {})
