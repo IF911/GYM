@@ -195,6 +195,10 @@ test('promotion stops if main moved while compatibility checks were running', as
 test('local diary, backup, network boundaries and the automation itself are protected', () => {
   for (const file of ['frontend/src/store/useStore.js', 'frontend/src/views/Settings.jsx',
     'frontend/src/views/settings-pages.js', 'frontend/src/lib/local.js', 'frontend/src/App.jsx',
+    'frontend/src/views/Modules.jsx', 'frontend/src/views/Modules.local.test.jsx',
+    'frontend/src/views/Integrations.jsx', 'frontend/src/views/Integrations.local.test.jsx',
+    'frontend/src/lib/integrations.js',
+    'frontend/src/components/YouTubeVideo.jsx', 'frontend/src/components/YouTubeVideo.local.test.jsx',
     'frontend/src/lib/api.js', 'frontend/public/sw-local.js', '.github/workflows/new-job.yml',
     'frontend/src/lib/plan-link.js', 'frontend/src/views/PlanLink.jsx',
     'frontend/src/lib/local-pwa-update.js', 'frontend/src/components/LocalPwaUpdate.jsx',

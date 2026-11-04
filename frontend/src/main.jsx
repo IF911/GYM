@@ -13,6 +13,7 @@ import './admin.css'
 import './coach.css'
 import './index.css'
 import { hideBoot, handOverFromLaunchScreen } from './lib/boot.js'
+import { guardFocusZoom } from './lib/viewport-zoom.js'
 
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.
 if (LOCAL) {
@@ -32,6 +33,8 @@ if (webServiceWorker) {
   if (LOCAL) startLocalPwaUpdates()
   else navigator.serviceWorker.register('sw.js').catch(() => {})
 }
+// The web build lets people pinch to zoom; on iOS a focused small field must not zoom the page.
+if (!MOBILE) guardFocusZoom()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode><App /></StrictMode>

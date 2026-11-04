@@ -2,15 +2,17 @@
 
 Локальная PWA на основе [openGym](https://github.com/DuarteSantos8/openGym).
 Рабочий repository: [IF911/GYM](https://github.com/IF911/GYM), ветка `main`.
-Текущая база openGym: **1.4.3**, `e6a95c28a6e3067bdd9b1188d5f37f448d528bd2`.
+Текущая база openGym: **1.4.4**, `5f5832db56080837b58342ff50f78631dcc63e07`.
 Исходная база локальной версии: `e348fc17c42c7e9a211c5972e573ad3698190ee2`.
-Личная некоммерческая производная версия openGym. Локальные доработки сохранены при ручном обновлении 2026-10-27:
+Личная некоммерческая производная версия openGym. Локальные доработки сохранены при ручном обновлении 2026-11-04:
 локальный режим без аккаунта и сети для данных, резервные копии, полная русская библиотека
 упражнений, оценка расхода калорий, передача в Apple Health и публикация PWA в Pages.
-В 1.4.3 добавлены реальные ступени веса тренажёров, быстрая замена упражнения на запасное,
-CSV-экспорт, карта мышц программы и дополнительные настройки отдыха. Приняты ускорение
-загрузки и исправления совместимости Safari; наши локальные ограничения и инструменты сохранены.
-Исправление автоматической проверки обновления для разных дней недели также сохранено.
+В 1.4.4 добавлены сравнение подходов с прошлой тренировкой, заметки к подходам,
+подсказки замен, переключатели разделов и многонедельные программы. Приняты исправления
+интерфейса установленной PWA на iPhone, полей дат и масштабирования текста.
+Программы не запускаются сами; прежний план сохраняется. Исправленная классификация мышц
+668 упражнений пересчитывает карту нагрузки и статистику старой истории.
+Локальные ограничения, русский каталог, калории, Health и проверка обновлений сохранены.
 
 **Приложение:** [if911.github.io/GYM](https://if911.github.io/GYM/).
 
@@ -78,9 +80,9 @@ GYM предложит подтвердить установку обновлё�
 отмечены конкретным примечанием: такой вариант нужно уточнить с тренером перед выполнением.
 Результат отдельной проверки проблемных формулировок: [catalogue/ru-review.json](catalogue/ru-review.json).
 
-При обновлении до openGym 1.4.3 все прежние русские названия, описания, шаги и примечания
+При обновлении до openGym 1.4.4 все прежние русские названия, описания, шаги и примечания
 сохранены без изменения. Новые строки интерфейса переведены; наши формулировки сохранены
-поверх переводов автора. Проверка интерфейса охватывает 19 языков по 2576 ключей.
+поверх переводов автора. Проверка интерфейса охватывает 19 языков по 3616 ключей.
 
 Проверка `ru-catalogue.test.js` требует русские тексты для каждого упражнения.
 Если автор добавит новые упражнения без перевода, автоматическое обновление остановится
@@ -266,6 +268,8 @@ if you want to try it before installing anything.
   list view. Switches in Settings bring the old button rows back if you liked them.
 - Optional effort column as RIR or RPE, colour-coded, with a plain-language line per level.
 - Plate math for barbell, EZ bar, trap bar and Smith machine, worked out from the plates you own.
+  Train in more than one place? Each gym keeps its own plates, dumbbells, bars and machine stacks,
+  and the phone can switch to the gym you just walked into.
 - Bodyweight exercises know they carry no load: log reps, add a dip belt if you use one.
 - Per-side reps for lunges and single-arm work, the screen stays awake while you train, and a
   rest-timer alert can flash the screen for loud gyms.
@@ -312,9 +316,15 @@ if you want to try it before installing anything.
   Start. Once a day at most, never after you trained, and your gyms stay on the phone.
 - An Apple Watch app: tick off sets with the Digital Crown, RPE or RIR right on the wrist, a
   full-screen rest countdown, heart rate per set, a Lock button against stray crown presses, and
-  complications.
+  complications. No watch? AirPods Pro 3 do the heart rate on iOS 26.
 - Widgets and a Live Activity on the iPhone: log a set, skip the rest or jump to the next exercise
   from the Lock Screen without opening the app.
+
+**Only what you use**
+
+- [Modules](docs/MODULES.md): switch whole parts of the app on and off in Settings → Modules, from
+  "Just training" to "Everything". Body, Health, Motivation, the Coach, seasonal themes and more
+  each disappear completely while they're off, and nothing is deleted.
 
 **Optional extras, off by default**
 
@@ -324,6 +334,9 @@ if you want to try it before installing anything.
   any OpenAI-compatible endpoint, Ollama included).
 - An [MCP server](mcp/README.md) so an assistant like Claude Desktop can answer questions about your
   training history, and log a workout you describe to it. Local; not part of the Docker build.
+- [Integrations](docs/INTEGRATIONS.md) in one place: Apple Health, Health Connect (Garmin, Fitbit,
+  Withings and friends come in through them), imports, and signed webhooks to Home Assistant, n8n or
+  ntfy when you finish a workout, set a record or weigh in.
 
 The full list of what changed release by release is in the [changelog](CHANGELOG.md).
 
@@ -377,6 +390,8 @@ Traefik and nginx, and there are separate guides for
 | `AUDIT_DAYS` | Days kept in the activity log; `0` keeps until `AUDIT_MAX` | `90` |
 | `AUDIT_IP` | Record the caller's address: `off`, `net` (network only) or `full` | `off` |
 | `ALLOWED_PRIVATE_IPS` | Private addresses push endpoints may resolve to (FakeDNS, split-horizon DNS): comma-separated IPs, `a-b` ranges or CIDR blocks | *(none)* |
+| `INTEGRATIONS` | Server integrations to offer, comma-separated: `webhook` ([integrations](docs/INTEGRATIONS.md)) | *(none)* |
+| `INTEGRATIONS_ALLOW_LAN` | `1`: webhooks may reach your home network (Home Assistant), http included; never loopback | *(off)* |
 | `VAPID_SUBJECT` | Contact URL sent with push notifications | your `ORIGIN` |
 | `API_TARGET` | API image to build: `default`, or `coach` with the Claude Agent SDK and Codex CLI | `default` |
 | `COACH_DISABLED` | `1` forces the AI coach off instance-wide | *(unset)* |

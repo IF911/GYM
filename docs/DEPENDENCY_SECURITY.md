@@ -5,6 +5,20 @@
 сохраняется для поддерживаемого upstream-маршрута. Данные пользователя для этих
 проверок не нужны.
 
+## Совмещение с openGym 1.4.4: 2026-11-04
+
+Прямые зависимости и существующие scoped overrides сохранены. Полный audit выявил
+три moderate записи в одной dev-цепочке `@capacitor/cli → rimraf → glob → minimatch`.
+В lockfile обновлены только `rimraf` 6.1.4, `glob` 14.0.3, `minimatch` 11.0.4
+и необходимые им `path-scurry` 3.0.0 и `@isaacs/nonrecursive-glob-match` 1.0.3.
+Обновление выполнено штатным npm под Node 24; `--force` и `--legacy-peer-deps`
+не применялись. Прямые зависимости не расширены.
+
+Основания: [glob AbortSignal advisory](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
+и [minimatch amplification advisory](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+После чистой установки lockfile полный frontend audit — 0 vulnerabilities.
+Результаты consumer checks и API/MCP проверок фиксируются в текущем handoff.
+
 ## Совмещение с openGym 1.4.3: 2026-10-27
 
 Приняты зависимости 1.4.3, включая React 19.3.1, Vite 8.3.5 и новые upstream helpers.
