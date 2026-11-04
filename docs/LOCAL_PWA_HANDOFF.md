@@ -65,10 +65,14 @@ set-trend, alternatives, modules и programmes suites. Настоящий пер
   3 программы, вес, custom exercise, 8 bytes media, язык, calorie/Health сохранены;
   JSON export/offline import PASS; external/API/write requests и page errors — 0.
 
-Состояние: локальное совмещение и проверки завершены; push/deploy ещё нет.
-Обязательные оставшиеся этапы: зафиксировать maintenance merge; push; дождаться
-Pages и upstream verification; проверить опубликованные assets и source archive.
-Фактический delivery фиксируется после публикации.
+Состояние: commit/push и публикация завершены. Продуктовый release —
+`8b7ba905ddd487ee9aea7f6ec25a41e22b256ccd`, включая два merge и исправление тура.
+[Pages 41825186828](https://github.com/IF911/GYM/actions/runs/41825186828) — success,
+включая полный frontend suite с новой регрессией, security/tooling, Health,
+locales, fatigue, build и deploy.
+[Upstream verification 41823821977](https://github.com/IF911/GYM/actions/runs/41823821977)
+— success: оба browser paths прошли, promote корректно skipped без новых изменений.
+[Issue #24](https://github.com/IF911/GYM/issues/24) закрыта как completed.
 
 Дополнительная проверка LOCAL entrypoints обнаружила пересечение первого тура с
 `/import-plan`: предложение тура перекрывало ввод защищённой ссылки и кода.
@@ -76,11 +80,38 @@ App откладывает предложение только на этом LOC
 таймер, выход сохраняет возможность тура на Home. Новый `App.local-tour.test.jsx`
 использует настоящие App/PlanLink/Tour: до исправления 4/5 FAIL, после — все 5 PASS;
 вместе с существующими PlanLink/Tour suites — 4 файла / 68 тестов PASS. Другие
-маршруты сохраняют прежний timing. Публикация merge `690f76cbe` уже прошла
+маршруты сохраняют прежний timing. Публикация merge `690f76cbe` прошла
 [Pages 41823821892](https://github.com/IF911/GYM/actions/runs/41823821892);
-этот небольшой fix выпускается отдельно до финальной live-проверки.
+отдельный fix `8b7ba905d` также опубликован и прошёл финальную live-проверку.
 
-Откат выпуска: `git revert -m 1 <merge-SHA>` и штатная Pages публикация.
+Live сверка `https://if911.github.io/GYM/`:
+
+- SHA-256 всех 176 файлов оболочки (без media и gzip-контейнера исходников)
+  совпадает с окончательной локальной сборкой. Прочитаны все 8234 уникальных файла
+  публичного source archive и сравнены с Git blobs release `8b7ba905d`;
+  private/runtime/env файлов и личных записей тренировок нет. LICENSE/NOTICE сохранены.
+- Проверены образцы still/clip `0001`, manifest — GYM, standalone, scope/start `./`.
+- Изолированный mobile Chrome 390 × 844 на настоящем сайте: сохранены история,
+  active, 3 программы, вес, custom exercise, media 8 bytes, calorie/Health и язык;
+  JSON export, перезапуск, offline import и проверка актуальной версии PASS.
+  Повторено с датой Halloween и с текущей датой. External/API/write requests и
+  page errors — 0; новые экраны Modules/Integrations просмотрены.
+- Окончательный локальный build `8b7ba905d`: старый → новый Monday и same-build
+  Tuesday PASS. Фактическая проверка на физическом iPhone/Safari не выполнялась;
+  это остаётся необязательной проверкой владельца.
+
+Обязательных незавершённых этапов выпуска нет. Необязательный backlog: прежняя
+неассоциативность слияния трёх конкурирующих копий workout (описана в записи
+2026-10-28 ниже), физический iPhone/Safari. Синхронизация между устройствами и
+native HealthKit остаются вне LOCAL PWA. Реальный дневник телефона не читался.
+Новые credentials не создавались, признаки компрометации не обнаружены,
+ротация не требуется. Следующий documentation commit фиксирует этот delivery;
+он не меняет опубликованные код и source archive release `8b7ba905d`.
+
+Откат полного выпуска: сначала приостановить GYM upstream sync, сохранить JSON/ZIP
+в приложении, затем локально выполнить `git revert 8b7ba905d`,
+`git revert -m 1 690f76cbe`, `git revert -m 1 ecf2da4de`; проверить результат
+и отправить одним push для штатной Pages публикации. Не применять reset/force push.
 Данные телефона не откатываются и не очищаются; перед сменой формата хранить backup.
 Реальные записи телефона не используются ни локальными тестами, ни GitHub Actions.
 Новые credentials не создаются; признаков компрометации нет, ротация не требуется.
