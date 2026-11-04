@@ -12,11 +12,34 @@
 Автоматический sync остановился в issue #24 на защищённых файлах: это ожидаемая
 проверка границ локального режима, а не потеря дневника.
 
+Первый локальный merge — `ecf2da4de`. Дополнительно проверены и совмещены 10
+последующих коммитов автора до `a75b92218`: они не меняют runtime интерфейса PWA,
+но исправляют дату недели программы в coach payload, Hono, отмену параллельных
+попыток входа и нестабильные fixtures/CI. Ошибка недели воспроизведена штатным
+API-тестом (3 вместо ожидаемых 2); авторский перенос `now` исправляет её, итоговый
+API suite — 800/800. Native/mirror workflows сохраняют guard repository автора.
+
 Приняты сравнение подходов, заметки к отдельным подходам и их CSV-экспорт, подсказки
 замен, модули интерфейса, программы блоками, исправления iPhone PWA и доступности.
 Запуск программы остаётся явным действием пользователя и не меняет прежний A/B план
 сам по себе. Классификация мышц 668 упражнений меняет расчёт нагрузки старой истории;
 русские имена, описания, техника и локальные примечания должны оставаться прежними.
+
+LOCAL Modules показывает только поддерживаемые разделы; presets не меняют скрытые
+Health/Watch/Coach/Integrations flags. Integrations и поиск предлагают только импорт
+файла и CSV; native/server API не вызываются. Наши калории и Health Shortcut не
+зависят от native Health-модуля. YouTube в LOCAL открывается явной внешней ссылкой,
+без iframe внутри PWA. Эти локальные overlays и их тесты добавлены в защиту updater.
+
+При проверке same-build обнаружена гонка QA fixture: после Nice! отложенный effect
+ChallengesCard записывал runtime state поверх прямой тестовой подстановки в
+localStorage. Трасса показала запись через 9–17 ms после seed. Реальный UI
+Create exercise → Save → немедленный export → reload → offline export сохраняет
+упражнение. Исправлен только seeding браузерной проверки: сначала пустой
+same-origin документ тестового сервера, затем seed и запуск приложения; все
+проверки сохранности остаются. То же сделано для offline reset. Проверочный профиль
+явно уже видел tour (`gym_tour_v1.offered`), чтобы обучающий overlay не перекрывал
+сценарий дневника; App/Tour не меняются. Production storage и Challenges не меняются.
 
 Проверки сохранности: `useStore.local.test.js` (старый backup, merge/replace,
 calorie/Health markers), LOCAL API/privacy и service-worker tests, Health builder,
@@ -25,11 +48,27 @@ set-trend, alternatives, modules и programmes suites. Настоящий пер
 1.4.3 проверяется `check-local-upgrade.mjs` с искусственным дневником, активной
 тренировкой, программами, весом и IndexedDB media, JSON export и offline import.
 
-Состояние на этапе подготовки: merge и проверки выполняются; push/deploy ещё нет.
-Обязательные этапы: завершить совмещение; выполнить полный frontend suite,
-security/tooling, Health, locales/fatigue, LOCAL build и browser upgrade; обновить
-документацию; commit/push; дождаться Pages; проверить опубликованный сайт.
-Фактические результаты и delivery будут записаны ниже перед завершением задачи.
+Проверки перед публикацией под Node 24.22.1:
+
+- Frontend: 670 файлов, 7943 теста PASS. Старые проверки More раскрывают настоящее
+  подменю; Stats выбирает валидный для 1RM barbell squat вместо sled leg press.
+- API: 800/800; MCP: 138/138 и 19 plain-node imports PASS.
+- Полный frontend/API/MCP audit — 0 vulnerabilities. Consumer checks CLI tar,
+  Xcode и PNG PASS; прямые frontend dependencies сохранены.
+- Health builder — 7/7; updater — 12/12; locales — 19 × 3616 ключей.
+- Fatigue — 108000, history-edit — 1800 сравнений, PASS. LOCAL build прошёл.
+- 13 исходных runtime LOCAL/Health/worker/backup компонентов
+  и все 5 русских catalogue/name/description/technique/review файлов побайтно
+  совпадают с прежней версией. Storage key остаётся `gym_state_v1`.
+- Старый → новый release: Monday/Tuesday paths PASS. Финальный trusted script
+  same-build Monday и upgrade Tuesday прошёл параллельно: история, active,
+  3 программы, вес, custom exercise, 8 bytes media, язык, calorie/Health сохранены;
+  JSON export/offline import PASS; external/API/write requests и page errors — 0.
+
+Состояние: локальное совмещение и проверки завершены; push/deploy ещё нет.
+Обязательные оставшиеся этапы: зафиксировать maintenance merge; push; дождаться
+Pages и upstream verification; проверить опубликованные assets и source archive.
+Фактический delivery фиксируется после публикации.
 
 Откат выпуска: `git revert -m 1 <merge-SHA>` и штатная Pages публикация.
 Данные телефона не откатываются и не очищаются; перед сменой формата хранить backup.

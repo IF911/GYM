@@ -17,7 +17,13 @@
 Основания: [glob AbortSignal advisory](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)
 и [minimatch amplification advisory](https://github.com/advisories/GHSA-g3hv-75wg-m249).
 После чистой установки lockfile полный frontend audit — 0 vulnerabilities.
-Результаты consumer checks и API/MCP проверок фиксируются в текущем handoff.
+Реальные consumer checks CLI tar/Xcode/PNG прошли.
+
+В API и MCP точечно обновлён транзитивный `@hono/node-server` до 2.1.6 по
+[advisory](https://github.com/advisories/GHSA-rmxm-3fg6-px4f); это совпадает с
+последующим исправлением автора. Прямые manifests не менялись, `qs` 6.17.0 в MCP
+сохранён. Чистые установки и полный audit API/MCP — 0 vulnerabilities;
+API — 800 тестов, MCP — 138 тестов и 19 plain-node imports PASS.
 
 ## Совмещение с openGym 1.4.3: 2026-10-27
 

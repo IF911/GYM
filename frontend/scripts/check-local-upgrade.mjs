@@ -40,6 +40,11 @@ function staticServer(initialDir) {
     try {
       const raw = new URL(req.url, 'http://127.0.0.1').pathname
       if (!raw.startsWith(ROOT) || req.method !== 'GET' && req.method !== 'HEAD') return void (res.statusCode = 404, res.end())
+      // Seed browser storage with no mounted app that could persist its older live state.
+      if (raw === `${ROOT}__fixture__.html`) {
+        res.setHeader('content-type', 'text/html; charset=utf-8')
+        return void res.end('<!doctype html><title>GYM storage fixture</title>')
+      }
       const rel = decodeURIComponent(raw.slice(ROOT.length))
       if (rel.includes('\0') || rel.split('/').includes('..')) return void (res.statusCode = 400, res.end('bad path'))
       let path = join(dir, normalize(rel || 'index.html'))
@@ -107,6 +112,8 @@ async function main(oldDir, newDir) {
       s.lang = 'en'; s.langAuto = false
       localStorage.setItem('gym_state_v1', JSON.stringify(s))
       localStorage.setItem('gym_ru_default_v1', '1')
+      // This diary-compatibility fixture already knows the UI; do not offer the tutorial.
+      localStorage.setItem('gym_tour_v1', JSON.stringify({ offered: true }))
     })
     await page.reload({ waitUntil: 'networkidle' })
     await page.goto(origin + '#/plan', { waitUntil: 'domcontentloaded' })
@@ -127,6 +134,7 @@ async function main(oldDir, newDir) {
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('gym_state_v1') || '{}').workouts?.length === 1)
     await page.getByRole('button', { name: 'Nice!', exact: true }).click()
 
+    await page.goto(`${origin}__fixture__.html`, { waitUntil: 'domcontentloaded' })
     const media = { hash: 'a'.repeat(64), mime: 'image/png', size: 8, width: 1, height: 1, at: 1 }
     const state = await page.evaluate(media => {
       const s = JSON.parse(localStorage.getItem('gym_state_v1'))
@@ -145,7 +153,7 @@ async function main(oldDir, newDir) {
     }, { media, bytes: [137, 80, 78, 71, 13, 10, 26, 10] })
     // Blob.arrayBuffer cannot be awaited from an IDB request handler in older engines; read it separately.
     const mediaBytesBefore = await page.evaluate(async () => new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const q = r.result.transaction('blobs').objectStore('blobs').get('a'.repeat(64)); q.onsuccess = async () => resolve([...new Uint8Array(await (q.result.blob ? q.result.blob.arrayBuffer() : q.result.data))]); q.onerror = () => reject(q.error) }; r.onerror = () => reject(r.error) }))
-    await page.reload({ waitUntil: 'networkidle' })
+    await page.goto(origin, { waitUntil: 'networkidle' })
     await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     const dlWait = page.waitForEvent('download')
@@ -227,13 +235,15 @@ async function main(oldDir, newDir) {
     }
     assert.deepEqual(afterUpdate.media, mediaBytesBefore, 'IndexedDB media bytes changed across deployment')
 
+    await page.goto(`${origin}__fixture__.html`, { waitUntil: 'domcontentloaded' })
     await context.setOffline(true)
     await page.evaluate(() => {
       localStorage.clear()
       localStorage.setItem('gym_ru_default_v1', '1')
+      localStorage.setItem('gym_tour_v1', JSON.stringify({ offered: true }))
       localStorage.setItem('gym_state_v1', JSON.stringify({ lang: 'en', langAuto: false, weighIn: false }))
     })
-    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1') || '{}').workouts?.length || 0), 0, 'disposable state was not cleared')
     await page.locator('input[type=file]').first().setInputFiles(backupPath)
