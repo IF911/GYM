@@ -308,8 +308,11 @@ function Shell() {
   useNfcTagLinks(setupDone)
   // A friend's routine link (components/RoutineShare.jsx): the same wait for the setup.
   useRoutineLinks(setupDone)
+  const importingPlan = LOCAL && /^\/import-plan(?:\/|$)/.test(loc.pathname)
   useEffect(() => {
     if (!setupDone || tourAsked.current) return
+    // Keep private-plan entry usable, including after PlanLink scrubs its payload from the URL.
+    if (importingPlan) return
     const tm = setTimeout(() => {
       const st = useStore.getState()
       if (tourAsked.current || tourState() || st.S.active || useUI.getState().sheets.length || /^#\/workout/.test(window.location.hash || '')) return
@@ -322,7 +325,7 @@ function Shell() {
       tourAsked.current = true
     }, 1200)
     return () => clearTimeout(tm)
-  }, [setupDone, S])
+  }, [setupDone, S, importingPlan])
   // The boot screen in index.html covers the start; it goes once there is something to show.
   useEffect(() => { if (ready || authed) hideBoot() }, [ready, authed])
   if (!ready && !authed) return (
