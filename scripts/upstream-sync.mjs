@@ -19,6 +19,8 @@ const protectedFiles = new Set([
   'frontend/src/views/Modules.jsx', 'frontend/src/views/Modules.local.test.jsx',
   'frontend/src/views/Integrations.jsx', 'frontend/src/views/Integrations.local.test.jsx',
   'frontend/src/lib/integrations.js',
+  'frontend/src/lib/sister-nutrition.js', 'frontend/src/lib/webdav-run.js', 'frontend/src/components/LibraryLink.jsx',
+  'frontend/src/components/ScanCode.test.jsx',
   'frontend/src/components/YouTubeVideo.jsx', 'frontend/src/components/YouTubeVideo.local.test.jsx',
   'frontend/src/store/useStore.local.test.js', 'frontend/src/views/Settings.local.test.jsx',
   'frontend/src/lib/local-pwa-update.js', 'frontend/src/lib/local-pwa-update.test.js',

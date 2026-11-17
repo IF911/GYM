@@ -21,7 +21,7 @@ vi.mock('../store/useUI.js', () => {
   useUI.getState = snap
   return { useUI }
 })
-vi.mock('react-router-dom', () => ({ useNavigate: () => () => {} }))
+vi.mock('react-router-dom', () => ({ useNavigate: () => () => {}, useLocation: () => ({ search: '', pathname: '/settings/integrations' }) }))
 vi.mock('../lib/api.js', () => ({ api: vi.fn(async (...args) => { mocks.calls.push(args); return {} }) }))
 vi.mock('../lib/mobile.js', () => ({ MOBILE: false }))
 vi.mock('../lib/demo.js', () => ({ DEMO: false }))
@@ -59,7 +59,7 @@ describe('LOCAL integrations', () => {
     const ctx = { local: true, user: null, mobile: false, demo: false, mod: () => true }
     expect(searchSettings('Import a file', ctx).map(hit => hit.title)).toContain('Import a file')
     expect(searchSettings('Spreadsheet CSV', ctx).map(hit => hit.title)).toContain('Spreadsheet (CSV)')
-    for (const term of ['Webhooks', 'Hevy', 'MCP', 'Garmin', 'Zepp']) {
+    for (const term of ['Webhooks', 'Hevy', 'MCP', 'Garmin', 'Zepp', 'WebDAV', 'openNutrition']) {
       expect(searchSettings(term, ctx).some(hit => hit.page === 'zepp' || hit.page === 'integrations' && !['Import a file', 'Spreadsheet (CSV)'].includes(hit.title)), term).toBe(false)
     }
     expect(searchSettings('Apple Health', ctx).some(hit => hit.title === 'Apple Health' && hit.page === 'integrations')).toBe(false)

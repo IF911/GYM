@@ -13,6 +13,7 @@ import App from './App.jsx'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { closeTour, tourState } from './lib/tour.js'
+import { OFFER_QUIET_MS, OFFER_SETTLE_MS } from './lib/tour-offer.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -28,7 +29,9 @@ const go = async hash => act(async () => {
   window.location.hash = hash
   window.dispatchEvent(new PopStateEvent('popstate'))
 })
-const settle = async () => act(async () => { await vi.advanceTimersByTimeAsync(1200) })
+const settle = async () => act(async () => {
+  await vi.advanceTimersByTimeAsync(OFFER_SETTLE_MS + OFFER_QUIET_MS * 2)
+})
 const expectImportUsable = () => {
   expect(document.querySelector('.tour-ask')).toBeNull()
   expect(tourState()).toBeNull()
@@ -42,7 +45,7 @@ const expectImportUsable = () => {
 beforeEach(async () => {
   // Resolve the actual lazy overlay before fake timers so Home proves the visible offer too.
   await import('./components/Tour.jsx')
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
   originalStore = useStore.getState()
   localStorage.clear()
   closeTour()

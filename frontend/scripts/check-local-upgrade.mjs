@@ -7,6 +7,7 @@
  * browser keeps exactly the same origin and storage during the update.
  */
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import http from 'node:http'
@@ -135,7 +136,10 @@ async function main(oldDir, newDir) {
     await page.getByRole('button', { name: 'Nice!', exact: true }).click()
 
     await page.goto(`${origin}__fixture__.html`, { waitUntil: 'domcontentloaded' })
-    const media = { hash: 'a'.repeat(64), mime: 'image/png', size: 8, width: 1, height: 1, at: 1 }
+    // A small, real 1×1 PNG. backup-media validates its image signature and SHA-256,
+    // so a header-only fixture would silently omit the media from the ZIP.
+    const mediaBytes = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=', 'base64'))
+    const media = { kind: 'image', hash: createHash('sha256').update(mediaBytes).digest('hex'), mime: 'image/png', size: mediaBytes.length, width: 1, height: 1, at: 1 }
     const state = await page.evaluate(media => {
       const s = JSON.parse(localStorage.getItem('gym_state_v1'))
       s.bodyweight = [{ d: '2026-10-20', v: 82 }]
@@ -150,9 +154,9 @@ async function main(oldDir, newDir) {
       const db = await new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media', 1); r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('blobs')) r.result.createObjectStore('blobs', { keyPath: 'hash' }) }; r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error) })
       await new Promise((resolve, reject) => { const tx = db.transaction('blobs', 'readwrite'); tx.objectStore('blobs').put({ ...media, blob: new Blob([new Uint8Array(bytes)], { type: media.mime }), putAt: 1, shownAt: 0, pending: true, rejected: false }); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error) })
       db.close()
-    }, { media, bytes: [137, 80, 78, 71, 13, 10, 26, 10] })
+    }, { media, bytes: [...mediaBytes] })
     // Blob.arrayBuffer cannot be awaited from an IDB request handler in older engines; read it separately.
-    const mediaBytesBefore = await page.evaluate(async () => new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const q = r.result.transaction('blobs').objectStore('blobs').get('a'.repeat(64)); q.onsuccess = async () => resolve([...new Uint8Array(await (q.result.blob ? q.result.blob.arrayBuffer() : q.result.data))]); q.onerror = () => reject(q.error) }; r.onerror = () => reject(r.error) }))
+    const mediaBytesBefore = await page.evaluate(async hash => new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const q = r.result.transaction('blobs').objectStore('blobs').get(hash); q.onsuccess = async () => resolve([...new Uint8Array(await (q.result.blob ? q.result.blob.arrayBuffer() : q.result.data))]); q.onerror = () => reject(q.error) }; r.onerror = () => reject(r.error) }), media.hash)
     await page.goto(origin, { waitUntil: 'networkidle' })
     await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
@@ -167,6 +171,11 @@ async function main(oldDir, newDir) {
     for (const key of ['localEnergy', 'localHealth', 'lang', 'langAuto']) {
       assert.deepEqual(backup[key], state[key], `JSON export lost ${key}`)
     }
+    const zipWait = page.waitForEvent('download')
+    await page.getByText('Export with photos & videos (.zip)', { exact: true }).click()
+    const zipDownload = await zipWait
+    const zipPath = join(temp, 'backup.zip')
+    await zipDownload.saveAs(zipPath)
 
     await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
     await startFixtureWorkout(page)
@@ -210,6 +219,19 @@ async function main(oldDir, newDir) {
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
     const loadedModuleSrc = await page.locator('script[type="module"]').first().getAttribute('src')
     assert.equal(new URL(loadedModuleSrc, origin).href, new URL(newModuleSrc, origin).href, 'page loaded a module script other than new-index script')
+    // Continue the migrated workout through the new UI: change and tick its second set,
+    // then reload to prove the edit is persisted in the active session.
+    await page.goto(origin + '#/workout', { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => !!JSON.parse(localStorage.getItem('gym_state_v1') || '{}').active)
+    const continuedRow = page.locator('.setrow').nth(1)
+    await continuedRow.locator('input').nth(0).fill('45')
+    await continuedRow.locator('input').nth(1).fill('7')
+    await page.getByRole('checkbox', { name: 'Set 2 done', exact: true }).first().click()
+    const activeAfterContinuation = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')).active)
+    assert.ok(activeAfterContinuation, 'continued workout must remain active before reload')
+    await page.reload({ waitUntil: 'networkidle' })
+    const activeAfterReload = await page.evaluate(() => JSON.parse(localStorage.getItem('gym_state_v1')).active)
+    assert.deepEqual(activeAfterReload, activeAfterContinuation, 'new-build workout continuation did not persist after reload')
     // Exercise a later check after lazy theme/screen CSS has loaded as well. A
     // successful reload must not offer the same installed version over and over.
     const currentCheck = page.getByText('Check for GYM updates', { exact: true })
@@ -220,16 +242,16 @@ async function main(oldDir, newDir) {
     assert.equal(await page.locator('.local-update-bar').count(), 0, 'current build offered another update after reload and manual check')
     await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
     await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
-    const afterUpdate = await page.evaluate(async () => {
+    const afterUpdate = await page.evaluate(async hash => {
       const s = JSON.parse(localStorage.getItem('gym_state_v1') || '{}')
-      const q = await new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const x = r.result.transaction('blobs').objectStore('blobs').get('a'.repeat(64)); x.onsuccess = () => resolve(x.result); x.onerror = () => reject(x.error) }; r.onerror = () => reject(r.error) })
+      const q = await new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const x = r.result.transaction('blobs').objectStore('blobs').get(hash); x.onsuccess = () => resolve(x.result); x.onerror = () => reject(x.error) }; r.onerror = () => reject(r.error) })
       return { state: s, media: q ? [...new Uint8Array(await (q.blob ? q.blob.arrayBuffer() : q.data))] : null }
-    })
+    }, media.hash)
     assert.deepEqual(afterUpdate.state.workouts, state.workouts, 'workouts changed across deployment')
     assert.deepEqual(afterUpdate.state.routines, state.routines, 'routines changed across deployment')
     assert.deepEqual(afterUpdate.state.customEx, state.customEx, 'custom exercises changed across deployment')
     assert.deepEqual(afterUpdate.state.bodyweight, state.bodyweight, 'bodyweight changed across deployment')
-    assert.deepEqual(afterUpdate.state.active, activeBeforeUpdate, 'active workout changed across deployment')
+    assert.deepEqual(afterUpdate.state.active, activeAfterContinuation, 'active workout changed after continuation and reload')
     for (const key of ['localEnergy', 'localHealth', 'lang', 'langAuto']) {
       assert.deepEqual(afterUpdate.state[key], state[key], `${key} changed across deployment`)
     }
@@ -255,9 +277,41 @@ async function main(oldDir, newDir) {
     for (const key of ['localEnergy', 'localHealth', 'lang', 'langAuto']) {
       assert.deepEqual(restored[key], backup[key], `offline JSON import changed ${key}`)
     }
+    // Go online only long enough to reach the inert fixture; it is not necessarily in the
+    // installed shell cache. Delete only this run's synthetic record and prove it is gone.
+    await context.setOffline(false)
+    await page.goto(`${origin}__fixture__.html`, { waitUntil: 'domcontentloaded' })
+    await page.evaluate(async hash => {
+      const db = await new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error) })
+      await new Promise((resolve, reject) => { const tx = db.transaction('blobs', 'readwrite'); tx.objectStore('blobs').delete(hash); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error) })
+      const record = await new Promise((resolve, reject) => { const q = db.transaction('blobs').objectStore('blobs').get(hash); q.onsuccess = () => resolve(q.result); q.onerror = () => reject(q.error) })
+      db.close()
+      if (record) throw new Error('synthetic IndexedDB media was not deleted before ZIP restore')
+    }, media.hash)
+    await page.evaluate(() => {
+      localStorage.clear()
+      localStorage.setItem('gym_ru_default_v1', '1')
+      localStorage.setItem('gym_tour_v1', JSON.stringify({ offered: true }))
+      localStorage.setItem('gym_state_v1', JSON.stringify({ lang: 'en', langAuto: false, weighIn: false }))
+    })
+    await context.setOffline(true)
+    await page.goto(origin + '#/settings/data', { waitUntil: 'domcontentloaded' })
+    await page.getByText('Export backup (JSON)', { exact: true }).waitFor()
+    await page.locator('input[type=file]').first().setInputFiles(zipPath)
+    await page.getByRole('button', { name: 'Import', exact: true }).click()
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('gym_state_v1') || '{}').workouts?.length === 1)
+    const zipRestored = await page.evaluate(async hash => {
+      const state = JSON.parse(localStorage.getItem('gym_state_v1') || '{}')
+      const rec = await new Promise((resolve, reject) => { const r = indexedDB.open('opengym-media'); r.onsuccess = () => { const q = r.result.transaction('blobs').objectStore('blobs').get(hash); q.onsuccess = () => resolve(q.result); q.onerror = () => reject(q.error) }; r.onerror = () => reject(r.error) })
+      return { state, bytes: rec ? [...new Uint8Array(await (rec.blob ? rec.blob.arrayBuffer() : rec.data))] : null }
+    }, media.hash)
+    assert.deepEqual(zipRestored.state.workouts, backup.workouts, 'offline ZIP import changed workouts')
+    assert.ok(zipRestored.state.customEx.some(x => x.id === 'qa-custom' && x.media?.hash === media.hash), 'offline ZIP import lost custom exercise media link')
+    assert.deepEqual(zipRestored.bytes, [...mediaBytes], 'offline ZIP import did not restore exact IndexedDB media bytes')
+    for (const key of ['localEnergy', 'localHealth']) assert.deepEqual(zipRestored.state[key], backup[key], `offline ZIP import changed ${key}`)
     assertCleanRequests('upgrade check')
     assert.deepEqual(pageErrors, [], `page errors: ${JSON.stringify(pageErrors)}`)
-    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, currentVersionAfterReload: true, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, caloriePreferencesKept: true, healthMarkersKept: true, chosenLanguageKept: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
+    const result = { oldDir: resolve(oldDir), newDir: resolve(newDir), buildsEqual, workerChanged, mobileViewport: '390x844', serviceWorkerUpgrade: workerChanged ? 'controllerchange observed' : 'same build accepted', deliberateUpdateUI: hasUpdateUI && oldIndex !== newIndex, currentVersionAfterReload: true, unsavedInputKeptUntilRestart: true, activeWorkoutKept: true, activeWorkoutContinuedAndPersisted: true, workout: true, routines: state.routines.length, bodyweight: true, customExercise: true, mediaBytes: mediaBytesBefore.length, jsonExport: true, offlineJsonImport: true, zipExport: true, offlineZipImport: true, restoredIndexedDbMediaBytes: zipRestored.bytes.length, customExerciseMediaLink: true, caloriePreferencesKept: true, healthMarkersKept: true, chosenLanguageKept: true, externalApiOrWriteRequests: 0, pageErrors: 0 }
     console.log(JSON.stringify(result, null, 2))
   } finally {
     await context?.close().catch(() => {})

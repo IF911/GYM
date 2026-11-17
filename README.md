@@ -2,12 +2,10 @@
 
 Локальная PWA на основе [openGym](https://github.com/DuarteSantos8/openGym).
 Рабочий repository: [IF911/GYM](https://github.com/IF911/GYM), ветка `main`.
-Текущая база openGym: **1.4.4**, `5f5832db56080837b58342ff50f78631dcc63e07`.
-Также приняты проверенные исправления автора до `a75b922181ed266e0e4658016b6d4fc33452eab0`:
-дата недели программы, серверные зависимости и стабильность проверок; код интерфейса
-PWA в этих последующих коммитах не меняется.
+Текущая база openGym: **1.4.5**, `2d70e026`.
+Приняты также два последующих коммита документации до `e4a68a94`.
 Исходная база локальной версии: `e348fc17c42c7e9a211c5972e573ad3698190ee2`.
-Личная некоммерческая производная версия openGym. Локальные доработки сохранены при ручном обновлении 2026-11-04:
+Личная некоммерческая производная версия openGym. Локальные доработки сохранены при ручном обновлении 2026-11-17:
 локальный режим без аккаунта и сети для данных, резервные копии, полная русская библиотека
 упражнений, оценка расхода калорий, передача в Apple Health и публикация PWA в Pages.
 В 1.4.4 добавлены сравнение подходов с прошлой тренировкой, заметки к подходам,
@@ -15,6 +13,8 @@ PWA в этих последующих коммитах не меняется.
 интерфейса установленной PWA на iPhone, полей дат и масштабирования текста.
 Программы не запускаются сами; прежний план сохраняется. Исправленная классификация мышц
 668 упражнений пересчитывает карту нагрузки и статистику старой истории.
+В 1.4.5 добавлены пауза тренировки, отдельные рабочие веса и заметки по залам,
+журнал заметок, настройки запасных упражнений и круговые/интервальные режимы.
 Локальные ограничения, русский каталог, калории, Health и проверка обновлений сохранены.
 
 **Приложение:** [if911.github.io/GYM](https://if911.github.io/GYM/).
@@ -83,9 +83,9 @@ GYM предложит подтвердить установку обновлё�
 отмечены конкретным примечанием: такой вариант нужно уточнить с тренером перед выполнением.
 Результат отдельной проверки проблемных формулировок: [catalogue/ru-review.json](catalogue/ru-review.json).
 
-При обновлении до openGym 1.4.4 все прежние русские названия, описания, шаги и примечания
+При обновлении до openGym 1.4.5 все прежние русские названия, описания, шаги и примечания
 сохранены без изменения. Новые строки интерфейса переведены; наши формулировки сохранены
-поверх переводов автора. Проверка интерфейса охватывает 19 языков по 3616 ключей.
+поверх переводов автора. Проверка интерфейса охватывает 25 языков по 5830 общих ключей.
 
 Проверка `ru-catalogue.test.js` требует русские тексты для каждого упражнения.
 Если автор добавит новые упражнения без перевода, автоматическое обновление остановится
@@ -307,7 +307,7 @@ if you want to try it before installing anything.
   everything as one JSON file, or your workouts and body data as a spreadsheet (CSV).
 - Share a plan as a small file or print it as a PDF.
 - Optional admin dashboard with invite-only signup and an activity log.
-- 20 languages, including right-to-left Arabic and Traditional Chinese. Exercise names and
+- 26 languages, including right-to-left Arabic and Persian, and Traditional Chinese. Exercise names and
   instructions are translated for most of them.
 
 **On the phone and the wrist**
@@ -398,6 +398,7 @@ Traefik and nginx, and there are separate guides for
 | `VAPID_SUBJECT` | Contact URL sent with push notifications | your `ORIGIN` |
 | `API_TARGET` | API image to build: `default`, or `coach` with the Claude Agent SDK and Codex CLI | `default` |
 | `COACH_DISABLED` | `1` forces the AI coach off instance-wide | *(unset)* |
+| `COACH_EFFORT` | Effort level for the Claude (Anthropic) Coach provider: `low`, `medium`, `high`, `xhigh` or `max` | the model's default |
 
 Push-notification keys are generated on first run into `./data/vapid.json`. `DATA_DIR` is pinned to
 `/data` inside the container and mapped to `./data` on the host; change the volume, not the
@@ -505,10 +506,9 @@ plan is in [ROADMAP.md](ROADMAP.md), and the issues sit in the
 | v1.4.2 | released Oct 2026 | The App Store, the Apple Watch, widgets, three APK sizes |
 | v1.4.3 | released Oct 2026 | The Halloween and community release: gym reminder, health data read back, watch upgrades, CSV export |
 | v1.4.4 | released Nov 2026 | Programmes, a fresh look, Modules, a tour with tutorials, AirPods heart rate, kg or lb per exercise, the Google Play closed test and a Wear OS beta |
-| v1.4.5 | Nov 2026 | Google Play for everyone, F-Droid, Settings → Integrations (Strava, webhooks, calendar, Nextcloud), timed holds that start themselves |
-| v1.4.6 | Dec 2026 | Wear OS out of beta, deeper Health Connect, body composition |
-| v1.4.7 | Dec 2026 | The progression engine by @giulioleuci, circuits, AMRAP and EMOM |
-| later | dates are guesses | Search and catalogue, accounts, a trainer role, skins, Garmin, database storage |
+| v1.4.5 | released Nov 2026 | The watch redesign on all three watches with one shared rest timer, Garmin in its store, circuits, a live widget, a Coach that acts, trainers and gyms, OIDC, a community library |
+| v1.4.6 | Dec 2026 | Google Play for everyone, F-Droid, Wear OS out of beta, set marks and calories from the watch, routine folders, the fixes waiting in review |
+| later | dates are guesses | The rest of the progression engine, accounts, skins, more integrations, database storage |
 
 ## Community
 
@@ -558,10 +558,8 @@ the same way.
 
 ## Sponsors
 
-**[ElfHosted](https://store.elfhosted.com/product/opengym/?utm_source=opengym&utm_medium=github&utm_campaign=opengym-sponsor)** sponsors openGym and runs it for you if you'd rather not
-self-host: a managed openGym instance, built from our tagged releases with no code changes, with a
-7-day trial. Your own server stays the first-class way to run openGym, and other hosts are welcome
-to offer it too (it's AGPL).
+**[ElfHosted](https://store.elfhosted.com/product/opengym/?utm_source=opengym&utm_medium=github&utm_campaign=opengym-sponsor)** sponsors openGym. If you'd rather not run a server, ElfHosted
+runs your own private openGym for you, and your data stays yours. There's no Docker or HTTPS to set up, the AI coach is included with no API key needed, and updates and daily backups are handled for you. Try it with a $1, 7-day trial.
 
 Sponsoring keeps the lights on. It buys no say in what openGym does: nothing is held back for
 sponsors, and nothing ever will be.

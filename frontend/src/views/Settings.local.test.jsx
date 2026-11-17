@@ -66,5 +66,6 @@ describe('Settings in the local PWA build', () => {
     expect(host.textContent).toContain('Import backup')
     expect(host.textContent).toContain('Import from another app')
     expect(host.textContent).not.toContain('Import from Hevy')
+    expect(host.textContent).not.toContain('Back up to WebDAV')
   })
 })

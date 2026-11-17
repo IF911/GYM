@@ -2,7 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.hoisted(() => { vi.stubEnv('VITE_LOCAL', '1') })
 import { useStore, DEF } from './useStore.js'
-import { api, apiBlob, apiUpload, beacon, pairRedeem } from '../lib/api.js'
+import { api, apiBlob, apiUpload, beacon, oidcRedeem, pairRedeem, serverConfig } from '../lib/api.js'
+import { clientFor, fetchBackup, listBackups, runBackup } from '../lib/webdav-run.js'
+import { link, readSummary, refresh } from '../lib/sister-nutrition.js'
 import { dispatchHealthExport, healthWorkoutKey } from '../lib/health-shortcut.js'
 import { estimateWorkoutCalories } from '../lib/workout-calories.js'
 const clone = v => JSON.parse(JSON.stringify(v))
@@ -14,6 +16,24 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('local PWA diary', () => {
+  it('blocks the new account and remote backup paths before any transport', async () => {
+    await useStore.getState().boot()
+    const url = 'https://fixture.invalid'
+    const fetchFn = vi.fn()
+    const config = { url, user: 'fixture', owner: 'local', daily: true }
+    localStorage.setItem('gym_sister_nutrition_v1', JSON.stringify({ url }))
+    await expect(oidcRedeem(url, 'fixture', 'fixture')).rejects.toMatchObject({ code: 'local-only' })
+    await expect(serverConfig(url)).resolves.toBeNull()
+    await expect(runBackup({ manual: true, fetchFn })).resolves.toMatchObject({ skipped: 'local-only' })
+    await expect(clientFor(config, 'fixture', fetchFn)).rejects.toMatchObject({ code: 'local-only' })
+    await expect(listBackups({ fetchFn })).rejects.toMatchObject({ code: 'local-only' })
+    await expect(fetchBackup('fixture.json', { fetchFn })).rejects.toMatchObject({ code: 'local-only' })
+    await expect(link(url, 'fixture', { fetchFn })).rejects.toMatchObject({ code: 'unreachable' })
+    await expect(readSummary(url, 'fixture', '2026-11-01', '2026-11-17', fetchFn)).rejects.toMatchObject({ code: 'unreachable' })
+    await expect(refresh({ force: true, fetchFn })).resolves.toBeNull()
+    expect(fetchFn).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('persists a pending Health hand-off before opening Shortcuts and keeps the diary local', async () => {
     await useStore.getState().boot()
     const w = { id: 'health-fixture', d: '2026-10-21', start: Date.UTC(2026, 9, 21, 10), end: Date.UTC(2026, 9, 21, 11), bw: 80,

@@ -94,7 +94,7 @@ describe('plate line under set rows', () => {
   it("Monday's squat ramp: a line where the stack changes, once for the three work sets", () => {
     mount([entry(SQUAT, [warm(70), warm(100), warm(120), work(145), work(145), work(145)], { w: 145 })])
     expect(lines()).toEqual([
-      { text: '10 + 2.5 per side', moves: null },
+      { text: '10 + 2.5 per side on a 45 lb bar', moves: null },
       { text: '25 + 2.5 per side', moves: '−10 +25' },
       { text: '35 + 2.5 per side', moves: '−25 +35' },
       { text: '45 + 5 per side', moves: '−35 −2.5 +45 +5' },
@@ -113,7 +113,7 @@ describe('plate line under set rows', () => {
 
   it('what the inventory cannot make says how much is short', () => {
     mount([entry(SQUAT, [work(70)], { w: 70 })], { plates: { lb: { 45: 1, 10: 1 } } })
-    expect(lines()).toEqual([{ text: '10 per side · 2.5 lb short', moves: null }])
+    expect(lines()).toEqual([{ text: '10 per side on a 45 lb bar · 2.5 lb short', moves: null }])
     expect(container.querySelector('.plateline .short').textContent).toBe('2.5 lb short')
   })
 
@@ -139,7 +139,7 @@ describe('plate line under set rows', () => {
     const dropped = { w: 145, r: 6, done: false, type: 'dropset', drops: [{ w: 115, r: 8 }] }
     mount([entry(SQUAT, [dropped, work(145)], { w: 145 })])
     expect(lines()).toEqual([
-      { text: '45 + 5 per side', moves: null },
+      { text: '45 + 5 per side on a 45 lb bar', moves: null },
       { text: '35 per side', moves: '−45 −5 +35' },
       { text: '45 + 5 per side', moves: '−35 +45 +5' },
     ])
@@ -156,7 +156,7 @@ describe('plate line under set rows', () => {
   it('the compact view keeps the stacks and drops the strip/add moves', () => {
     mount([entry(SQUAT, [warm(70), warm(100), work(145)], { w: 145 })], { workoutView: 'compact' })
     expect(lines()).toEqual([
-      { text: '10 + 2.5 per side', moves: null },
+      { text: '10 + 2.5 per side on a 45 lb bar', moves: null },
       { text: '25 + 2.5 per side', moves: null },
       { text: '45 + 5 per side', moves: null },
     ])
@@ -164,7 +164,7 @@ describe('plate line under set rows', () => {
 
   it('the ⋯ menu offers Plate loading with the bar as its summary', () => {
     mount([entry(SQUAT, [work(145)], { w: 145 })])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(b => /^More(, |$)/.test(b.getAttribute('aria-label') || b.title || '') && !b.classList.contains('n'))
     expect(more).toBeTruthy()
     act(() => more.click())
     const sheet = useUI.getState().sheets.at(-1)
@@ -182,7 +182,7 @@ describe('plate line under set rows', () => {
 
   it('the ⋯ menu keeps Plate loading for bodyweight with added load', () => {
     mount([entry(COCOONS, [work(25)], { w: 25 })])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(b => /^More(?:, |$)/.test(b.getAttribute('aria-label') || b.title || '') && !b.classList.contains('n'))
     act(() => more.click())
     const sc = document.createElement('div')
     document.body.appendChild(sc)
@@ -208,7 +208,7 @@ describe('plate line under set rows', () => {
       loadKind: { [MACHINE]: { kind: 'pairs', _ts: 1 } }, barWeights: { [MACHINE]: 50 },
     })
     expect(lines()).toEqual([{ text: '45 + 2.5 per side', moves: null }])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(b => /^More(, |$)/.test(b.getAttribute('aria-label') || b.title || '') && !b.classList.contains('n'))
     act(() => more.click())
     const sc = document.createElement('div')
     document.body.appendChild(sc)
@@ -223,7 +223,7 @@ describe('plate line under set rows', () => {
 
   it('the ⋯ menu opens Weight stack for a cable even when plate loading is hidden', () => {
     mount([entry(PUSHDOWN, [work(25)], { w: 25 })])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(b => /^More(?:, |$)/.test(b.getAttribute('aria-label') || b.title || '') && !b.classList.contains('n'))
     act(() => more.click())
     const sc = document.createElement('div')
     document.body.appendChild(sc)
@@ -241,7 +241,7 @@ describe('plate line under set rows', () => {
     act(() => dr.render(sheet.render(() => {})))
     expect(detail.textContent).toContain('Weight stack')
     expect(detail.textContent).not.toContain('Plate loading')
-    expect(detail.querySelector('input[aria-label="First (lb)"]')).toBeTruthy()
+    expect(detail.querySelector('input[aria-label*="First (lb)"]')).toBeTruthy()
     act(() => dr.unmount()); detail.remove()
     act(() => sr.unmount()); sc.remove()
   })
@@ -252,7 +252,7 @@ describe('plate line under set rows', () => {
     act(() => useStore.setState(s => ({ S: { ...s.S, active: { ...s.S.active, editingWorkoutId: 'saved' } } })))
     expect(container.textContent).toContain('Editing a saved workout')
     expect(lines()).toEqual([])
-    const more = [...container.querySelectorAll('button')].find(b => (b.getAttribute('aria-label') || b.title || '') === 'More' && !b.classList.contains('n'))
+    const more = [...container.querySelectorAll('button')].find(b => /^More(, |$)/.test(b.getAttribute('aria-label') || b.title || '') && !b.classList.contains('n'))
     act(() => more.click())
     const sc = document.createElement('div')
     document.body.appendChild(sc)
